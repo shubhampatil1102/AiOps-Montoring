@@ -1,0 +1,27 @@
+.sidebar {
+  width: 220px;
+  background: #020617;
+  border-right: 1px solid #1e293b;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+a {
+  color: #94a3b8;
+  text-decoration: none;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+a.active {
+  background: #1d4ed8;
+  color: white;
+}
