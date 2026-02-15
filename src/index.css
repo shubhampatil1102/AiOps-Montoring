@@ -1,16 +1,81 @@
-@keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.2; }
-  100% { opacity: 1; }
+body{
+  margin:0;
+  font-family: Inter, system-ui, Arial;
+  background: linear-gradient(135deg,#0f172a,#020617);
+  color:white;
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateX(120%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+/* GLASS CARD */
+.glass{
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  border-radius:16px;
+  transition: all .25s ease;
+}
+
+/* FLOAT HOVER */
+.glass:hover{
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.55);
+}
+
+/* SOFT SCROLLBAR */
+::-webkit-scrollbar{
+  width:8px;
+}
+::-webkit-scrollbar-thumb{
+  background:#334155;
+  border-radius:10px;
+}
+
+/* critical pulse */
+.pulse-critical{
+  position: relative;
+}
+
+.pulse-critical::after{
+  content:"";
+  position:absolute;
+  inset:-6px;
+  border-radius:18px;
+  border:2px solid rgba(239,68,68,0.6);
+  animation:pulse 1.6s infinite;
+}
+
+@keyframes pulse{
+  0%{opacity:.9; transform:scale(.95);}
+  70%{opacity:0; transform:scale(1.15);}
+  100%{opacity:0;}
+}
+
+/* glass card base */
+.glass{
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(18px);
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.35);
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+}
+
+/* critical animation */
+.pulse-critical{
+  position: relative;
+}
+
+.pulse-critical::after{
+  content:"";
+  position:absolute;
+  inset:-6px;
+  border-radius:22px;
+  border:2px solid rgba(239,68,68,.6);
+  animation:pulse 1.6s infinite;
+}
+
+@keyframes pulse{
+  0%{opacity:.9; transform:scale(.95);}
+  70%{opacity:0; transform:scale(1.15);}
+  100%{opacity:0;}
 }

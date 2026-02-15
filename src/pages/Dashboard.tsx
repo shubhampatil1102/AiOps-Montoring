@@ -1,9 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import UsageBar from "../components/UsageBar";
-import { formatTime } from "../utils/time";
-import alertSound from "../assets/alert.mp3";
-import { useState, useEffect, useRef } from "react";
-
 
 export default function Dashboard() {
 
@@ -16,20 +12,6 @@ export default function Dashboard() {
         refetchInterval: 5000
     });
 
-    const sortedDevices = [...devices].sort((a: any, b: any) => {
-
-        const aOffline = Date.now() - (a.time || 0) > 20000;
-        const bOffline = Date.now() - (b.time || 0) > 20000;
-
-        // offline first
-        if (aOffline !== bOffline) return aOffline ? -1 : 1;
-
-        // then highest cpu
-        return (b.cpu || 0) - (a.cpu || 0);
-    });
-
-
-
     const { data: alerts = [] } = useQuery({
         queryKey: ["alerts"],
         queryFn: async () => {
@@ -39,98 +21,60 @@ export default function Dashboard() {
         refetchInterval: 5000
     });
 
-    const lastAlertKey = useRef<string | null>(null);
+    // HEALTH CLASSIFICATION
+    const healthy = devices.filter((d: any) =>
+        Date.now() - d.time < 20000 && d.cpu < 70 && d.ram < 80
+    );
 
-    const audioRef = useRef<HTMLAudioElement | null>(null);
-    const [toast, setToast] = useState<any>(null);
-
-
-    useEffect(() => {
-        audioRef.current = new Audio(alertSound);
-        audioRef.current.volume = 0.5;
-
-        const unlock = () => {
-            audioRef.current?.play().then(() => {
-                audioRef.current?.pause();
-                audioRef.current!.currentTime = 0;
-                console.log("Audio unlocked");
-            }).catch(() => { });
-            document.removeEventListener("click", unlock);
-        };
-
-        document.addEventListener("click", unlock);
-    }, []);
-
-    useEffect(() => {
-        if (!alerts || alerts.length === 0) return;
-
-        const newest = alerts[0];
-        const key = newest.time + newest.message + newest.id;
-
-        if (lastAlertKey.current === null) {
-            lastAlertKey.current = key;
-            return;
-        }
-
-        if (key !== lastAlertKey.current) {
-            audioRef.current?.play().catch(() => { });
-
-            setToast(newest);
-            setTimeout(() => setToast(null), 5000);
-
-            lastAlertKey.current = key;
-        }
-
-
-
-    }, [alerts]);
-
-    {
-        toast && (
-            <div style={{
-                position: "fixed",
-                top: 20,
-                right: 20,
-                background: "#111827",
-                color: "white",
-                padding: "14px 18px",
-                borderRadius: 10,
-                boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
-                borderLeft: `6px solid ${toast.message.includes("OFFLINE") ? "#ef4444" :
-                    toast.message.includes("CPU") ? "#f97316" :
-                        "#eab308"
-                    }`,
-                zIndex: 9999,
-                animation: "slideIn 0.4s ease"
-            }}>
-                <div style={{ fontWeight: 600 }}>{toast.id}</div>
-                <div style={{ fontSize: 13, opacity: 0.9 }}>{toast.message}</div>
-            </div>
+    const warning = devices.filter((d: any) =>
+        Date.now() - d.time < 20000 && (
+            (d.cpu >= 70 && d.cpu < 90) ||
+            (d.ram >= 80 && d.ram < 90)
         )
-    }
+    );
 
-    const online = devices.filter((d: any) => Date.now() - (d.time || 0) < 20000);
-    const offline = devices.length - online.length;
+    const critical = devices.filter((d: any) =>
+        Date.now() - d.time < 20000 && (
+            d.cpu >= 90 || d.ram >= 90
+        )
+    );
+
+    const offline = devices.filter((d: any) =>
+        Date.now() - d.time >= 20000
+    );
 
     return (
-        <div style={{ padding: 10 }}>
+        <div style={{ padding: 20 }}>
 
-            <h1 style={{ fontSize: 26, marginBottom: 30 }}>System Overview</h1>
+            <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 20 }}>
+                Environment Health
+            </h1>
 
-            {/* SUMMARY CARDS */}
-            <div style={{ display: "flex", gap: 20, marginBottom: 30 }}>
-                <Card title="Total Devices" value={devices.length} color="#2563eb" />
-                <Card title="Online" value={online.length} color="#16a34a" />
-                <Card title="Offline" value={offline} color="#dc2626" />
-                <Card title="Alerts" value={alerts.length} color="#f59e0b" />
+            {/* BIG HEALTH CARDS */}
+            <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4,1fr)",
+                gap: 20,
+                marginBottom: 30
+            }}>
+
+                <HealthCard title="Healthy" value={healthy.length} color="#22c55e" />
+                <HealthCard title="Warning" value={warning.length} color="#f59e0b" />
+                <HealthCard title="Critical" value={critical.length} color="#ef4444" />
+                <HealthCard title="Offline" value={offline.length} color="#6b7280" />
+
             </div>
 
-            {/* MAIN GRID */}
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+            {/* MAIN PANELS */}
+            <div style={{
+                display: "grid",
+                gridTemplateColumns: "2fr 1fr",
+                gap: 20
+            }}>
 
-                {/* DEVICES PANEL */}
-                <div style={{ background: "white", padding: 15, borderRadius: 12 }}>
-                    <h3 style={{ marginBottom: 10 }}>Live Devices</h3>
+                {/* DEVICES */}
+                <div className="glass" style={{  padding: 20, borderRadius: 12 }}>
+                    <h3 style={{ marginBottom: 10 }}>Devices</h3>
 
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead>
@@ -143,43 +87,34 @@ export default function Dashboard() {
                         </thead>
 
                         <tbody>
-                            {sortedDevices.map((d: any) => {
-                                const isOnline = Date.now() - (d.time || 0) < 20000;
+                            {devices.map((d: any) => {
+                                const online = Date.now() - d.time < 20000;
+
+                                let status = "Healthy";
+                                let color = "#22c55e";
+
+                                if (!online) { status = "Offline"; color = "#6b7280"; }
+                                else if (d.cpu > 90 || d.ram > 90) { status = "Critical"; color = "#ef4444"; }
+                                else if (d.cpu > 70 || d.ram > 80) { status = "Warning"; color = "#f59e0b"; }
 
                                 return (
                                     <tr key={d.id}>
-                                        <td style={td}>{d.id || "Unknown"}</td>
-
+                                        <td style={td}>{d.id}</td>
+                                        <td style={td}><UsageBar value={d.cpu || 0} /></td>
+                                        <td style={td}><UsageBar value={d.ram || 0} /></td>
                                         <td style={td}>
-                                            <UsageBar value={Number(d.cpu || 0)} />
-                                        </td>
-
-                                        <td style={td}>
-                                            <UsageBar value={Number(d.ram || 0)} />
-                                        </td>
-
-                                        <td style={td}>
-                                            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                                                <span style={{
-                                                    width: 10,
-                                                    height: 10,
-                                                    borderRadius: "50%",
-                                                    background:
-                                                        !isOnline ? "#6b7280" :
-                                                            d.cpu > 85 || d.ram > 90 ? "#ef4444" :
-                                                                d.cpu > 70 || d.ram > 80 ? "#f59e0b" :
-                                                                    "#22c55e"
-                                                }} />
-
-                                                {
-                                                    !isOnline ? "OFFLINE" :
-                                                        d.cpu > 85 || d.ram > 90 ? "CRITICAL" :
-                                                            d.cpu > 70 || d.ram > 80 ? "WARNING" :
-                                                                "HEALTHY"
-                                                }
-
+                                            <span style={{
+                                                padding: "4px 10px",
+                                                borderRadius: 20,
+                                                background: color + "30",
+                                                color,
+                                                fontWeight: 600,
+                                                fontSize: 12
+                                            }}>
+                                                {status}
                                             </span>
                                         </td>
+
                                     </tr>
                                 );
                             })}
@@ -187,89 +122,85 @@ export default function Dashboard() {
                     </table>
                 </div>
 
-                {/* ALERT PANEL */}
-                <div style={{
-                    background: "white",
-                    padding: 15,
+                {/* LIVE INCIDENTS */}
+                <div className="glass"
+                style={{ 
+                    padding: 20,
                     borderRadius: 12,
-                    height: 420,
+                    height: 520,
                     display: "flex",
                     flexDirection: "column"
                 }}>
-                    <h3 style={{ marginBottom: 10 }}>Live Incidents</h3>
+                    <h3>Live Incidents</h3>
 
-                    <div style={{ overflowY: "auto", flex: 1 }}>
-                        {alerts.map((a: any, i: number) => (
+                    <div style={{ overflowY: "auto", marginTop: 10 }}>
+                        {alerts.map((a: any) => (
                             <div key={a.time} style={{
                                 borderBottom: "1px solid #e5e7eb",
-                                padding: "8px 0",
-                                background: i === 0 ? "#fee2e2" : "transparent",
-                                animation: i === 0 ? "pulse 1s ease-in-out 2" : "none"
+                                padding: "10px 0"
                             }}>
                                 <div style={{ fontWeight: 600 }}>{a.id}</div>
-                                <div
-                                    style={{
-                                        color: a.message.includes("OFFLINE") ? "#ef4444" :
-                                            a.message.includes("CPU") ? "#f97316" :
-                                                "#eab308",
-                                        fontSize: 13,
-                                        fontWeight: 600,
-                                        ...(a.message.includes("OFFLINE") ? blinkStyle : {})
-                                    }}
-                                >
-                                    {a.message}
+                                <div style={{ color: "#ef4444", fontSize: 13 }}>{a.message}</div>
+                                <div style={{ fontSize: 11, color: "#6b7280" }}>
+                                    {new Date(a.time).toLocaleTimeString()}
                                 </div>
-
-
-                                <div style={{ color: "#6b7280", fontSize: 12 }}>
-                                    {formatTime(Number(a.time))}
-                                </div>
-
                             </div>
                         ))}
-
-                        {alerts.length === 0 && (
-                            <div style={{ color: "#6b7280" }}>No active incidents 🎉</div>
-                        )}
                     </div>
                 </div>
 
             </div>
+
+        </div>
+    );
+}
+function HealthCard({ title, value, color = "#3b82f6" }: any) {
+
+
+    const isCritical =
+        (title === "Offline" && value > 0) ||
+        (title === "Alerts" && value > 0);
+
+    return (
+        <div
+            className={`glass ${isCritical ? "pulse-critical" : ""}`}
+            style={{
+                padding: 28,
+                position: "relative",
+                overflow: "hidden",
+                transition: "all .25s ease",
+                cursor: "default"
+            }}
+            onMouseEnter={(e: any) => {
+                e.currentTarget.style.transform = "translateY(-8px) scale(1.03)";
+            }}
+            onMouseLeave={(e: any) => {
+                e.currentTarget.style.transform = "translateY(0px) scale(1)";
+            }}
+        >
+
+            {/* glow */}
+            <div style={{
+                position: "absolute",
+                inset: 0,
+                background: `radial-gradient(circle at top left, ${color || "#3b82f6"}55, transparent 65%)`
+
+            }} />
+
+            {/* content */}
+            <div style={{ fontSize: 14, opacity: .7, marginBottom: 8 }}>
+                {title}
+            </div>
+
+            <div style={{ fontSize: 48, fontWeight: 700, color }}>
+                {value}
+            </div>
+
         </div>
     );
 }
 
-function Card({ title, value, color }: any) {
-    return (
-        <div style={{
-            background: "white",
-            padding: 18,
-            borderRadius: 10,
-            borderLeft: `6px solid ${color}`,
-            minWidth: 150
-        }}>
-            <div style={{ color: "#6b7280" }}>{title}</div>
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{value}</div>
-        </div>
-    );
-}
+
 
 const th = { padding: 12, textAlign: "left" as const };
 const td = { padding: 12, borderTop: "1px solid #e2e8f0" };
-
-
-const blinkStyle = {
-    animation: "blink 1s linear infinite"
-};
-
-
-const style = document.createElement("style");
-style.innerHTML = `
-@keyframes pulse {
-  0% { background: #fee2e2; }
-  50% { background: #fecaca; }
-  100% { background: #fee2e2; }
-}
-`;
-document.head.appendChild(style);
-
