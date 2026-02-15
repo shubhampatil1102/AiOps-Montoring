@@ -3,6 +3,7 @@ import AppLayout from "./layouts/AppLayout";
 
 import Dashboard from "./pages/Dashboard";
 import Devices from "./pages/Devices";
+import DeviceDetail from "./pages/DeviceDetail";
 import Incidents from "./pages/Incidents";
 import Policies from "./pages/Policies";
 
@@ -11,10 +12,14 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AppLayout />}>
+
+          {/* main pages */}
           <Route index element={<Dashboard />} />
           <Route path="devices" element={<Devices />} />
+          <Route path="devices/:id" element={<DeviceDetail />} />
           <Route path="incidents" element={<Incidents />} />
           <Route path="policies" element={<Policies />} />
+
         </Route>
       </Routes>
     </BrowserRouter>

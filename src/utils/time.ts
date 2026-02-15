@@ -7,3 +7,15 @@ export function timeAgo(ts: number) {
 
   return `${Math.floor(diff / 86400)}d ago`;
 }
+
+export function formatTime(ts: number) {
+  const d = new Date(ts);
+
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}

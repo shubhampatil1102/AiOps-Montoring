@@ -26,6 +26,7 @@ function Get-TopProcesses {
     $list = @()
 
     foreach ($p in $grouped) {
+    
         $proc = Get-Process -Name $p.name -ErrorAction SilentlyContinue | Select-Object -First 1
         $ram = if ($proc) { [math]::Round($proc.WorkingSet / 1MB, 2) } else { 0 }
 
@@ -38,7 +39,9 @@ function Get-TopProcesses {
 
     return $list
 }
-
+$boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+    $bootUnix = [int][double]::Parse((Get-Date $boot -UFormat %s))
+    $bootMillis = $bootUnix * 1000
 # ---------------- MAIN LOOP ----------------
 while ($true) {
 
@@ -61,6 +64,7 @@ while ($true) {
             id = $env:COMPUTERNAME
             cpu = $cpu
             ram = $ram
+            boot_time = $bootMillis
             processes = $top
         } | ConvertTo-Json -Depth 4
 

@@ -1,7 +1,30 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchDevices } from "@/api/devices";
+import { useNavigate } from "react-router-dom";
 
 export default function Devices() {
+
+  const navigate = useNavigate();
+
+  function getReason(d: any) {
+    if (Date.now() - d.time > 20000) return "Agent not reporting";
+    if (d.cpu > 90) return "CPU critically high";
+    if (d.ram > 90) return "Memory critically high";
+    if (d.cpu > 75) return "CPU elevated";
+    if (d.ram > 80) return "Memory elevated";
+    return "Healthy";
+  }
+
+  function formatUptime(boot: number) {
+    if (!boot) return "-";
+
+    const sec = Math.floor((Date.now() - boot) / 1000);
+    const d = Math.floor(sec / 86400);
+    const h = Math.floor((sec % 86400) / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+
+    return `${d}d ${h}h ${m}m`;
+  }
 
   const { data: devices = [], isLoading, isError } = useQuery({
     queryKey: ["devices"],
@@ -27,21 +50,39 @@ export default function Devices() {
             <th style={th}>Device</th>
             <th style={th}>CPU</th>
             <th style={th}>RAM</th>
+            <th style={th}>Uptime</th>
             <th style={th}>Status</th>
           </tr>
         </thead>
 
         <tbody>
-          {devices.map((d:any) => {
+          {devices.map((d: any) => {
             const online = Date.now() - d.time < 20000;
 
             return (
-              <tr key={d.id}>
+              <tr
+                key={d.id}
+                onClick={() => navigate(`/devices/${d.id}`)}
+                style={{
+                  cursor: "pointer",
+                  transition: "0.2s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                onMouseLeave={e => (e.currentTarget.style.background = "white")}
+              >
                 <td style={td}>{d.id}</td>
-                <td style={td}>{d.cpu?.toFixed(1)}%</td>
-                <td style={td}>{d.ram?.toFixed(1)}%</td>
-                <td style={{...td, color: online ? "green" : "red"}}>
-                  {online ? "ONLINE" : "OFFLINE"}
+                <td style={td}>{Number(d.cpu || 0).toFixed(1)}%</td>
+                <td style={td}>{Number(d.ram || 0).toFixed(1)}%</td>
+                <td style={td}>{formatUptime(d.boot_time)}</td>
+
+                <td style={td} title={getReason(d)}>
+                  <span style={{
+                    color: online ? "#16a34a" : "#ef4444",
+                    fontWeight: 600,
+                    cursor: "help"
+                  }}>
+                    {online ? "ONLINE" : "OFFLINE"}
+                  </span>
                 </td>
               </tr>
             );
