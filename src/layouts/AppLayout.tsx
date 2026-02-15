@@ -1,20 +1,21 @@
 import { Outlet } from "react-router-dom";
-import Sidebar from "../modules/layout/Sidebar";
-import Topbar from "../modules/layout/Topbar";
-import styles from "./layout.module.css";
+import Sidebar from "../components/Sidebar";
+import Topbar from "../components/Topbar";
 
 export default function AppLayout() {
   return (
-    <div className={styles.wrapper}>
+    <div style={{ display: "flex", height: "100vh", background: "#f1f5f9" }}>
+      
       <Sidebar />
 
-      <div className={styles.page}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <Topbar />
 
-        <main className={styles.content}>
+        <div style={{ flex: 1, overflow: "auto", padding: 20 }}>
           <Outlet />
-        </main>
+        </div>
       </div>
+
     </div>
   );
 }

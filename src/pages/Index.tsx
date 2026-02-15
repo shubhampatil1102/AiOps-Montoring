@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Cpu, HardDrive, MemoryStick, Wifi } from "lucide-react";
-import AgentSidebar from "@/components/AgentSidebar";
+import AgentSidebar from "@/components/Sidebar";
 import AgentStatus from "@/components/AgentStatus";
 import MetricCard from "@/components/MetricCard";
 import TaskQueue from "@/components/TaskQueue";

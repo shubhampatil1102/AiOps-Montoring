@@ -1,15 +1,19 @@
-import { NavLink } from "react-router-dom";
-import styles from "./sidebar.module.css";
+import { Link } from "react-router-dom";
 
 export default function Sidebar() {
   return (
-    <div className={styles.sidebar}>
-      <div className={styles.logo}>AiOps</div>
+    <div style={{
+      width: 220,
+      background: "#272b32",
+      color: "white",
+      padding: 20
+    }}>
+      <h2>AiOps</h2>
 
-      <NavLink to="/">Dashboard</NavLink>
-      <NavLink to="/devices">Devices</NavLink>
-      <NavLink to="/incidents">Incidents</NavLink>
-      <NavLink to="/policies">Policies</NavLink>
+      <div><Link to="/">Dashboard</Link></div>
+      <div><Link to="/devices">Devices</Link></div>
+      <div><Link to="/incidents">Incidents</Link></div>
+      <div><Link to="/policies">Policies</Link></div>
     </div>
   );
 }

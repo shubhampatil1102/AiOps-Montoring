@@ -1,102 +1,56 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchDevices } from "@/api/devices";
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import UsageBar from "@/components/UsageBar";
-import HealthBadge from "@/components/HealthBadge";
-import DeviceStateBadge from "@/components/DeviceStateBadge";
 
 export default function Devices() {
 
-  const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-
-  const { data: devices = [] } = useQuery({
+  const { data: devices = [], isLoading, isError } = useQuery({
     queryKey: ["devices"],
     queryFn: fetchDevices,
     refetchInterval: 5000,
   });
 
-  const filtered = devices.filter((d: any) =>
-    d.id.toLowerCase().includes(search.toLowerCase())
-  );
+  if (isLoading) return <h2 style={{ padding: 40 }}>Loading devices...</h2>;
+  if (isError) return <h2 style={{ padding: 40 }}>API Error</h2>;
 
   return (
-    <div>
-      <h1 style={{ fontSize: 26, marginBottom: 16 }}>Devices</h1>
+    <div style={{ padding: 20 }}>
+      <h2 style={{ marginBottom: 20 }}>Devices</h2>
 
-      {/* SEARCH */}
-      <input
-        placeholder="Search device..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{
-          padding: "8px 12px",
-          background: "#020617",
-          border: "1px solid #1f2937",
-          borderRadius: 8,
-          marginBottom: 16,
-          color: "white",
-        }}
-      />
-
-      {/* TABLE */}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-
+      <table style={{
+        width: "100%",
+        background: "white",
+        borderRadius: 10,
+        borderCollapse: "collapse"
+      }}>
         <thead>
-          <tr style={{ color: "#9ca3af", textAlign: "left" }}>
-            <th>Health</th>
-            <th>Device</th>
-            <th>Agent</th>
-            <th>CPU</th>
-            <th>RAM</th>
+          <tr style={{ background: "#f1f5f9" }}>
+            <th style={th}>Device</th>
+            <th style={th}>CPU</th>
+            <th style={th}>RAM</th>
+            <th style={th}>Status</th>
           </tr>
         </thead>
 
         <tbody>
-          {filtered.map((d: any) => {
-
+          {devices.map((d:any) => {
             const online = Date.now() - d.time < 20000;
 
             return (
-              <tr
-                key={d.id}
-                onClick={() => navigate(`/devices/${d.id}`)}
-                style={{
-                  cursor: "pointer",
-                  borderTop: "1px solid #1f2937",
-                }}
-              >
-
-                {/* HEALTH (resource health) */}
-                <td style={{ padding: "12px 0" }}>
-                  <HealthBadge cpu={d.cpu || 0} ram={d.ram || 0} online={online} />
+              <tr key={d.id}>
+                <td style={td}>{d.id}</td>
+                <td style={td}>{d.cpu?.toFixed(1)}%</td>
+                <td style={td}>{d.ram?.toFixed(1)}%</td>
+                <td style={{...td, color: online ? "green" : "red"}}>
+                  {online ? "ONLINE" : "OFFLINE"}
                 </td>
-
-                {/* DEVICE NAME */}
-                <td>{d.id}</td>
-
-                {/* AGENT STATE (presence monitoring) */}
-                <td>
-                  <DeviceStateBadge state={d.state} />
-                </td>
-
-                {/* CPU */}
-                <td>
-                  <UsageBar value={d.cpu || 0} time={d.time} />
-                </td>
-
-                {/* RAM */}
-                <td>
-                  <UsageBar value={d.ram || 0} time={d.time} />
-                </td>
-
               </tr>
             );
           })}
         </tbody>
-
       </table>
     </div>
   );
 }
+
+const th = { padding: 12, textAlign: "left" as const };
+const td = { padding: 12, borderTop: "1px solid #e2e8f0" };

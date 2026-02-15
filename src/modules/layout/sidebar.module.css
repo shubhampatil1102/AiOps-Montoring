@@ -1,7 +1,8 @@
 .sidebar {
   width: 220px;
-  background: #020617;
-  border-right: 1px solid #1e293b;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-right: 1px solid #e2e8f0;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -16,12 +17,11 @@
 
 a {
   color: #94a3b8;
-  text-decoration: none;
   padding: 10px;
   border-radius: 8px;
 }
 
 a.active {
-  background: #1d4ed8;
+  background: #2563eb;
   color: white;
 }

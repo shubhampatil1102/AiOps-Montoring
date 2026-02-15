@@ -5,15 +5,22 @@
 }
 
 body {
-  background: #0f172a;
-  color: #e5e7eb;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* links */
+a {
+  text-decoration: none;
+  color: inherit;
 }
 
 /* scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #cbd5e1;
   border-radius: 6px;
 }

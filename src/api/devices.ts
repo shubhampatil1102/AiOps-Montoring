@@ -1,7 +1,20 @@
-export async function fetchDevices() {
-  const res = await fetch("http://localhost:4000/devices");
-  return res.json();
-}
+export const fetchDevices = async () => {
+  try {
+    const r = await fetch("http://localhost:4000/devices");
+
+    if (!r.ok) throw new Error("API failed");
+
+    const data = await r.json();
+
+    if (!Array.isArray(data)) return [];
+
+    return data;
+  } catch (err) {
+    console.error("Devices API error:", err);
+    return [];
+  }
+};
+
 
 export async function fetchDevice(id: string) {
   const res = await fetch(`http://localhost:4000/devices/${id}`);
