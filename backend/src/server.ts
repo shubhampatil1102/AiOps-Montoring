@@ -160,7 +160,98 @@ app.get("/devices/:id/events", async (req, res) => {
      LIMIT 100`,
     [req.params.id]
   );
-  res.send(result.rows);
+  res.send(result.rows.map(r => ({
+  ...r,
+  time: Number(r.time)
+})));
+});
+
+/* ---------------- Scripts run through agent ---------------- */
+
+app.post("/scripts", async (req,res)=>{
+  const {name,description,script,timeout=120} = req.body;
+
+  await db.query(
+    "INSERT INTO scripts(name,description,script,timeout,created_at) VALUES($1,$2,$3,$4,$5)",
+    [name,description,script,timeout,Date.now()]
+  );
+
+  res.send({ok:true});
+});
+
+/* ---------------- Get Script ---------------- */
+app.get("/scripts", async (req,res)=>{
+  const r = await db.query("SELECT id,name,description,timeout FROM scripts ORDER BY id DESC");
+  res.send(r.rows);
+});
+
+/* ---------------- Run Script on Device ---------------- */
+app.post("/scripts/run", async (req,res)=>{
+  const {device_id,script_id} = req.body;
+
+  await db.query(
+    "INSERT INTO script_jobs(device_id,script_id,status) VALUES($1,$2,'PENDING')",
+    [device_id,script_id]
+  );
+
+  res.send({ok:true});
+});
+/* ---------------- Agent asks for Job ---------------- */
+app.get("/agent/job/:deviceId", async (req,res)=>{
+
+  const r = await db.query(`
+    SELECT j.id,s.script,s.timeout
+    FROM script_jobs j
+    JOIN scripts s ON s.id=j.script_id
+    WHERE j.device_id=$1 AND j.status='PENDING'
+    ORDER BY j.id ASC
+    LIMIT 1
+  `,[req.params.deviceId]);
+
+  if(r.rows.length===0) return res.send({job:null});
+
+  const job = r.rows[0];
+
+  await db.query(
+    "UPDATE script_jobs SET status='RUNNING',started_at=$1 WHERE id=$2",
+    [Date.now(),job.id]
+  );
+
+  res.send({
+    job_id:job.id,
+    script:job.script,
+    timeout:job.timeout
+  });
+});
+
+/* ---------------- Agent sends job report-------- */
+app.post("/agent/job/result", async (req,res)=>{
+  const {job_id,success,output,error} = req.body;
+
+  await db.query(
+    `UPDATE script_jobs
+     SET status=$1,
+         output=$2,
+         error=$3,
+         finished_at=$4
+     WHERE id=$5`,
+    [success?"SUCCESS":"FAILED",output,error,Date.now(),job_id]
+  );
+
+  res.send({ok:true});
+});
+
+/* ---------------- UI Job history ---------------- */
+app.get("/scripts/jobs", async (req,res)=>{
+  const r = await db.query(`
+    SELECT j.*,s.name
+    FROM script_jobs j
+    JOIN scripts s ON s.id=j.script_id
+    ORDER BY j.id DESC
+    LIMIT 100
+  `);
+
+  res.send(r.rows);
 });
 
 /* ---------------- ALERTS ---------------- */

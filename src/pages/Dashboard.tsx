@@ -131,7 +131,7 @@ export default function Dashboard() {
                     display: "flex",
                     flexDirection: "column"
                 }}>
-                    <h3>Live Incidents</h3>
+                    <h3>Live Events</h3>
 
                     <div style={{ overflowY: "auto", marginTop: 10 }}>
                         {alerts.map((a: any) => (
@@ -142,7 +142,7 @@ export default function Dashboard() {
                                 <div style={{ fontWeight: 600 }}>{a.id}</div>
                                 <div style={{ color: "#ef4444", fontSize: 13 }}>{a.message}</div>
                                 <div style={{ fontSize: 11, color: "#6b7280" }}>
-                                    {new Date(a.time).toLocaleTimeString()}
+                                    {new Date(Number(a.time)).toLocaleTimeString()}
                                 </div>
                             </div>
                         ))}

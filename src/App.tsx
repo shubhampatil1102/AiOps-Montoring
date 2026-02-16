@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./layouts/AppLayout";
-
+import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import Devices from "./pages/Devices";
 import DeviceDetail from "./pages/DeviceDetail";
@@ -19,7 +19,7 @@ export default function App() {
           <Route path="devices/:id" element={<DeviceDetail />} />
           <Route path="incidents" element={<Incidents />} />
           <Route path="policies" element={<Policies />} />
-
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>

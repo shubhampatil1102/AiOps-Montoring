@@ -12,7 +12,7 @@ export default function Topbar() {
       <b>Monitoring Portal</b>
 
       <div style={{ color: "#6b7280" }}>
-        Real-time system monitoring
+    <button style={{background:"#b6caf8", borderRadius: 50}}>##</button>
       </div>
     </div>
   );
