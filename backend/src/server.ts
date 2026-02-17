@@ -4,7 +4,9 @@ import { db } from "./db";
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
 
 /* ---------------- HELPERS ---------------- */
 async function addEvent(id: string, type: string, message: string) {
@@ -161,98 +163,49 @@ app.get("/devices/:id/events", async (req, res) => {
     [req.params.id]
   );
   res.send(result.rows.map(r => ({
-  ...r,
-  time: Number(r.time)
-})));
+    ...r,
+    time: Number(r.time)
+  })));
 });
 
-/* ---------------- Scripts run through agent ---------------- */
+/* ================= SCRIPT LIBRARY ================= */
 
-app.post("/scripts", async (req,res)=>{
-  const {name,description,script,timeout=120} = req.body;
-
-  await db.query(
-    "INSERT INTO scripts(name,description,script,timeout,created_at) VALUES($1,$2,$3,$4,$5)",
-    [name,description,script,timeout,Date.now()]
-  );
-
-  res.send({ok:true});
-});
-
-/* ---------------- Get Script ---------------- */
-app.get("/scripts", async (req,res)=>{
-  const r = await db.query("SELECT id,name,description,timeout FROM scripts ORDER BY id DESC");
-  res.send(r.rows);
-});
-
-/* ---------------- Run Script on Device ---------------- */
-app.post("/scripts/run", async (req,res)=>{
-  const {device_id,script_id} = req.body;
-
-  await db.query(
-    "INSERT INTO script_jobs(device_id,script_id,status) VALUES($1,$2,'PENDING')",
-    [device_id,script_id]
-  );
-
-  res.send({ok:true});
-});
-/* ---------------- Agent asks for Job ---------------- */
-app.get("/agent/job/:deviceId", async (req,res)=>{
-
+app.get("/scripts/library", async (_, res) => {
   const r = await db.query(`
-    SELECT j.id,s.script,s.timeout
-    FROM script_jobs j
-    JOIN scripts s ON s.id=j.script_id
-    WHERE j.device_id=$1 AND j.status='PENDING'
-    ORDER BY j.id ASC
-    LIMIT 1
-  `,[req.params.deviceId]);
-
-  if(r.rows.length===0) return res.send({job:null});
-
-  const job = r.rows[0];
-
-  await db.query(
-    "UPDATE script_jobs SET status='RUNNING',started_at=$1 WHERE id=$2",
-    [Date.now(),job.id]
-  );
-
-  res.send({
-    job_id:job.id,
-    script:job.script,
-    timeout:job.timeout
-  });
-});
-
-/* ---------------- Agent sends job report-------- */
-app.post("/agent/job/result", async (req,res)=>{
-  const {job_id,success,output,error} = req.body;
-
-  await db.query(
-    `UPDATE script_jobs
-     SET status=$1,
-         output=$2,
-         error=$3,
-         finished_at=$4
-     WHERE id=$5`,
-    [success?"SUCCESS":"FAILED",output,error,Date.now(),job_id]
-  );
-
-  res.send({ok:true});
-});
-
-/* ---------------- UI Job history ---------------- */
-app.get("/scripts/jobs", async (req,res)=>{
-  const r = await db.query(`
-    SELECT j.*,s.name
-    FROM script_jobs j
-    JOIN scripts s ON s.id=j.script_id
-    ORDER BY j.id DESC
-    LIMIT 100
+    SELECT id,name,description
+    FROM script_library
+    ORDER BY id ASC
   `);
 
   res.send(r.rows);
 });
+
+/* Script execution from library */
+app.post("/scripts/run-library", async (req, res) => {
+
+  const { device, script_id } = req.body;
+
+  if (!device || !script_id)
+    return res.status(400).send({ error: "device & script_id required" });
+
+  const script = await db.query(
+    "SELECT script FROM script_library WHERE id=$1",
+    [script_id]
+  );
+
+  if (!script.rows.length)
+    return res.status(404).send({ error: "Script not found" });
+
+  await db.query(
+    `INSERT INTO script_jobs(device_id,script,status,created_at)
+     VALUES ($1,$2,'PENDING',$3)`,
+    [device, script.rows[0].script, Date.now()]
+  );
+
+  res.send({ ok: true });
+});
+
+
 
 /* ---------------- ALERTS ---------------- */
 app.get("/alerts", async (req, res) => {
@@ -333,6 +286,111 @@ setInterval(async () => {
     }
   }
 }, 30000);
+
+/* =========================================================
+   SCRIPT EXECUTION ENGINE (CLEAN VERSION)
+   ========================================================= */
+
+/* Create Job */
+app.post("/scripts/run", async (req, res) => {
+
+  if (!req.body || !req.body.device_id || !req.body.script)
+    return res.status(400).send({ error: "device_id & script required" });
+
+  const { device_id, script } = req.body;
+
+  const r = await db.query(
+    `INSERT INTO script_jobs(device_id,script,status,created_at)
+     VALUES($1,$2,'PENDING',$3)
+     RETURNING id`,
+    [device_id.trim(), script, Date.now()]
+  );
+
+  console.log("JOB CREATED:", r.rows[0].id, "for", device_id);
+
+  res.send({ job_id: r.rows[0].id });
+});
+
+
+/* Agent Pull Job */
+app.get("/agent/job/:device", async (req, res) => {
+
+  const device = req.params.device.trim();
+
+  console.log("Agent asking job for:", device);
+
+  const job = await db.query(
+    `SELECT id,script
+     FROM script_jobs
+     WHERE device_id=$1 AND status='PENDING'
+     ORDER BY id ASC
+     LIMIT 1`,
+    [device]
+  );
+
+  if (job.rowCount === 0) {
+    console.log("No job for", device);
+    return res.send({});
+  }
+
+  await db.query(
+    "UPDATE script_jobs SET status='RUNNING',started_at=$1 WHERE id=$2",
+    [Date.now(), job.rows[0].id]
+  );
+
+  console.log("JOB SENT:", job.rows[0].id);
+
+  res.send({
+    job_id: job.rows[0].id,
+    script: job.rows[0].script,
+    timeout: 120
+  });
+});
+
+
+/* Agent Send Result */
+app.post("/agent/job/result", async (req, res) => {
+
+  let { job_id, success, output, error } = req.body;
+
+  // force boolean conversion
+  success = success === true || success === "true";
+
+  console.log("JOB RESULT:", job_id, success);
+
+  await db.query(
+    `UPDATE script_jobs
+     SET status=$1,
+         output=$2,
+         error=$3,
+         finished_at=$4
+     WHERE id=$5`,
+    [
+      success ? "SUCCESS" : "FAILED",
+      output ?? "",
+      error ?? "",
+      Date.now(),
+      job_id
+    ]
+  );
+
+  res.send({ ok: true });
+});
+
+
+/* UI History */
+app.get("/scripts/jobs", async (_, res) => {
+
+  const r = await db.query(
+    `SELECT id,device_id,status,output,error,created_at,started_at,finished_at
+     FROM script_jobs
+     ORDER BY id DESC
+     LIMIT 50`
+  );
+
+  res.send(r.rows);
+});
+
 
 /* ---------------- START ---------------- */
 app.listen(4000, () =>

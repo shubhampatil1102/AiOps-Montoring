@@ -1,70 +1,119 @@
 ﻿$ErrorActionPreference = "Stop"
-Write-Host "Agent starting..."
+Write-Host "AiOps Agent starting..."
 
-# ---------------- PROCESS COLLECTOR ----------------
-function Get-TopProcesses {
+$device = $env:COMPUTERNAME.Trim().ToUpper()
 
-    $cores = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
+# ================= SYSTEM USAGE =================
+function Get-SystemUsage {
 
-    $samples = (Get-Counter '\Process(*)\% Processor Time').CounterSamples
+    $cpu = Get-CimInstance Win32_Processor |
+           Measure-Object LoadPercentage -Average |
+           Select -ExpandProperty Average
 
-    $grouped = $samples |
-        Where-Object { $_.InstanceName -notmatch "_Total|Idle" } |
-        Group-Object InstanceName |
-        ForEach-Object {
-            $cpuRaw = ($_.Group | Measure-Object CookedValue -Average).Average
-            $cpu = $cpuRaw / $cores
+    $os = Get-CimInstance Win32_OperatingSystem
+    $ram = (($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) /
+           $os.TotalVisibleMemorySize) * 100
 
-            [PSCustomObject]@{
-                name = $_.Name
-                cpu  = [math]::Round($cpu, 2)
-            }
-        } |
-        Sort-Object cpu -Descending |
-        Select-Object -First 5
-
-    $list = @()
-
-    foreach ($p in $grouped) {
-    
-        $proc = Get-Process -Name $p.name -ErrorAction SilentlyContinue | Select-Object -First 1
-        $ram = if ($proc) { [math]::Round($proc.WorkingSet / 1MB, 2) } else { 0 }
-
-        $list += @{
-            name = $p.name
-            cpu  = $p.cpu
-            ram  = $ram
-        }
-    }
-
-    return $list
-}
-$boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+    $boot = $os.LastBootUpTime
     $bootUnix = [int][double]::Parse((Get-Date $boot -UFormat %s))
     $bootMillis = $bootUnix * 1000
-# ---------------- MAIN LOOP ----------------
+
+    return @{
+        cpu = [math]::Round($cpu,2)
+        ram = [math]::Round($ram,2)
+        boot = $bootMillis
+    }
+}
+
+# ================= TOP PROCESSES =================
+function Get-TopProcesses {
+
+    Get-Process |
+    Sort-Object CPU -Descending |
+    Select-Object -First 5 |
+    ForEach-Object {
+        @{
+            name = $_.ProcessName
+            cpu  = [math]::Round($_.CPU,2)
+            ram  = [math]::Round($_.WorkingSet64 / 1MB,2)
+        }
+    }
+}
+
+# ================= SCRIPT EXECUTOR =================
+function Execute-Script($scriptText) {
+
+    try {
+
+        $tempScript = "C:\ProgramData\AiOps_job.ps1"
+        Set-Content -Path $tempScript -Value $scriptText -Force
+
+        Write-Host "Executing script..."
+
+        $output = & powershell -ExecutionPolicy Bypass -File $tempScript 2>&1 | Out-String
+
+        return @{
+            success = $true
+            output  = $output
+            error   = ""
+        }
+    }
+    catch {
+        return @{
+            success = $false
+            output  = ""
+            error   = ($_ | Out-String)
+        }
+    }
+}
+
+# ================= REMOTE JOB =================
+function Invoke-RemoteJob {
+
+    try {
+
+        Write-Host "Checking job for $device"
+
+        $job = Invoke-RestMethod -Uri "http://127.0.0.1:4000/agent/job/$device"
+
+        if (!$job.job_id) { return }
+
+        Write-Host "Received job $($job.job_id)"
+
+        $result = Execute-Script $job.script
+
+        Invoke-RestMethod `
+          -Uri "http://127.0.0.1:4000/agent/job/result" `
+          -Method Post `
+          -Body (@{
+              job_id = $job.job_id
+              success = $result.success
+              output = $result.output
+              error = $result.error
+          } | ConvertTo-Json -Depth 5) `
+          -ContentType "application/json"
+
+        Write-Host "Job finished"
+
+    }
+    catch {
+        Write-Host "Job execution failed: $_"
+    }
+}
+
+# ================= MAIN LOOP =================
 while ($true) {
 
     try {
 
-        # CPU %
-        $cpu = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples.CookedValue
-        $cpu = [math]::Round($cpu,2)
-
-        # RAM %
-        $os = Get-CimInstance Win32_OperatingSystem
-        $used = ($os.TotalVisibleMemorySize - $os.FreePhysicalMemory)
-        $ram = [math]::Round(($used / $os.TotalVisibleMemorySize) * 100,2)
-
-        # Top processes
+        $usage = Get-SystemUsage
         $top = Get-TopProcesses
 
-        # Payload
         $body = @{
-            id = $env:COMPUTERNAME
-            cpu = $cpu
-            ram = $ram
-            boot_time = $bootMillis
+            id = $device
+            cpu = $usage.cpu
+            ram = $usage.ram
+            boot_time = $usage.boot
             processes = $top
         } | ConvertTo-Json -Depth 4
 
@@ -74,11 +123,13 @@ while ($true) {
             -Body $body `
             -ContentType "application/json"
 
-        Write-Host "Sent CPU:$cpu RAM:$ram"
+        Invoke-RemoteJob
+
+        Write-Host "Sent CPU:$($usage.cpu) RAM:$($usage.ram)"
 
     }
     catch {
-        Write-Host "ERROR:" $_
+        Write-Host "Agent error: $_"
     }
 
     Start-Sleep 5

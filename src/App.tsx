@@ -6,6 +6,8 @@ import Devices from "./pages/Devices";
 import DeviceDetail from "./pages/DeviceDetail";
 import Incidents from "./pages/Incidents";
 import Policies from "./pages/Policies";
+import Scripts from "@/pages/Scripts";
+
 
 export default function App() {
   return (
@@ -19,6 +21,7 @@ export default function App() {
           <Route path="devices/:id" element={<DeviceDetail />} />
           <Route path="incidents" element={<Incidents />} />
           <Route path="policies" element={<Policies />} />
+          <Route path="scripts" element={<Scripts />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
