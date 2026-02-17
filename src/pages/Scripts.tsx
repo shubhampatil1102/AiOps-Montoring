@@ -56,9 +56,9 @@ export default function Scripts() {
         mutationFn: ({ device, script_id }: { device: string, script_id: number }) =>
             runLibrary(device, script_id)
     });
-   
+
     <div >
-    
+
         <h3>Quick Actions Here</h3>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 12 }}>
@@ -117,7 +117,7 @@ export default function Scripts() {
                     style={{ ...input, height: 180, fontFamily: "monospace" }}
                 />
 
-                <button 
+                <button
                     onClick={() => run.mutate()}
                     style={btn}
                     disabled={!device || !script}
@@ -125,6 +125,48 @@ export default function Scripts() {
                     Run Script
                 </button>
             </div>
+            {/* QUICK SCRIPT LIBRARY */}
+            <div style={card}>
+                <h3 style={{ marginBottom: 10 }}>Quick Actions</h3>
+
+                <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))",
+                    gap: 12
+                }}>
+                    {library.length === 0 && (
+                        <div style={{ opacity: .6 }}>No predefined scripts</div>
+                    )}
+
+                    {library.map((s: any) => (
+                        <div key={s.id} style={{
+                            border: "1px solid #e5e7eb",
+                            padding: 12,
+                            borderRadius: 10,
+                            background: "#f8fafc"
+                        }}>
+                            <div style={{ fontWeight: 600 }}>{s.name}</div>
+
+                            <div style={{
+                                fontSize: 12,
+                                opacity: .7,
+                                margin: "6px 0 10px"
+                            }}>
+                                {s.description}
+                            </div>
+
+                            <button
+                                style={btn}
+                                onClick={() => runLib.mutate({ device, script_id: s.id })}
+                                disabled={!device}
+                            >
+                                Run on {device || "Select Device"}
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
 
             {/* JOB STATUS */}
             <div style={card}>
@@ -154,7 +196,7 @@ export default function Scripts() {
                                 </span>
                             </div>
 
-                            <div style={{ fontSize: 12, opacity: .7 }}>
+                            <div style={{ fontSize: 12, opacity: .7, color:"grey"}}>
                                 {new Date(Number(j.finished_at || j.created_at)).toLocaleString()}
                             </div>
 
