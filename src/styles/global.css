@@ -24,3 +24,67 @@ a {
   background: #cbd5e1;
   border-radius: 6px;
 }
+
+/* ===== Usage Bar Animation ===== */
+
+.usage-fill {
+    height: 100%;
+    border-radius: 20px;
+    transition: width .6s ease;
+    position: relative;
+}
+
+/* moving shine effect */
+.usage-fill::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -40%;
+    height: 100%;
+    width: 40%;
+    background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,.6),
+        transparent
+    );
+    animation: shine 2.5s infinite;
+}
+
+@keyframes shine {
+    0% { left: -40%; }
+    100% { left: 140%; }
+}
+
+/* warning */
+.usage-fill.warning {
+    box-shadow: 0 0 8px rgba(245,158,11,.5);
+}
+
+/* critical pulse */
+.usage-fill.critical {
+    animation: criticalPulse 1.2s infinite;
+}
+
+@keyframes criticalPulse {
+    0% { box-shadow: 0 0 0px rgba(239,68,68,.4); }
+    50% { box-shadow: 0 0 12px rgba(239,68,68,.9); }
+    100% { box-shadow: 0 0 0px rgba(239,68,68,.4); }
+}
+
+/* tooltip */
+.usage-tooltip {
+    position: absolute;
+    bottom: 150%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #020617;
+    color: white;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    z-index: 9999;
+    box-shadow: 0 6px 18px rgba(0,0,0,.25);
+    pointer-events: none;
+}

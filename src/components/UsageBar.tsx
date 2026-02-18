@@ -1,53 +1,49 @@
 import { useState } from "react";
-import TooltipBox from "./TooltipBox";
 
-export default function UsageBar({ value, time }: { value: number; time?: number }) {
-  const [hover, setHover] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
+export default function UsageBar({ value }: { value: number }) {
 
-  const color =
-    value > 85 ? "#ef4444" :
-    value > 70 ? "#f59e0b" :
-    "#22c55e";
+    const [hover, setHover] = useState(false);
 
-  const last = time ? new Date(Number(time)).toLocaleTimeString() : "";
+    const level =
+        value > 90 ? "critical" :
+        value > 75 ? "warning" :
+        "healthy";
 
-  return (
-    <>
-      <div
-        onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}
-        onMouseMove={(e) => setPos({ x: e.clientX, y: e.clientY })}
-        style={{ width: 120 }}
-      >
+    const color =
+        level === "critical" ? "#ef4444" :
+        level === "warning" ? "#f59e0b" :
+        "#22c55e";
+
+    return (
         <div
-          style={{
-            height: 6,
-            background: "#bfd6f7",
-            borderRadius: 10,
-            overflow: "hidden",
-            
-          }}
-          
-        >
-          <div
             style={{
-              width: `${value}%`,
-              background: color,
-              height: "100%",
+                position: "relative",
+                width: "100%",
+                height: 12,
+                background: "#e5e7eb",
+                borderRadius: 20,
+                overflow: "visible",
+                zIndex:50
             }}
-          />
-        </div>
-      </div>
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+        >
 
-      {hover && (
-        <TooltipBox
-          x={pos.x}
-          y={pos.y}
-          text={`Usage: ${value.toFixed(1)}% ${last && `• ${last}`}`}
-        />
-        
-      )}
-    </>
-  );
+            {/* animated fill */}
+            <div className={`usage-fill ${level}`}
+                style={{
+                    width: value + "%",
+                    background: color
+                }}
+            />
+
+            {/* tooltip */}
+            {hover && (
+                <div className="usage-tooltip">
+                    {value.toFixed(1)}%
+                </div>
+            )}
+
+        </div>
+    );
 }

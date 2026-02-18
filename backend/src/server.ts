@@ -347,6 +347,24 @@ app.get("/agent/job/:device", async (req, res) => {
   });
 });
 
+/* LIVE LOG STREAM */
+app.post("/agent/job/log", async (req,res)=>{
+
+  const { job_id, chunk } = req.body;
+
+  if(!job_id || chunk===undefined)
+    return res.status(400).send({error:"invalid log payload"});
+
+  await db.query(
+    `UPDATE script_jobs
+     SET output = COALESCE(output,'') || $1
+     WHERE id=$2`,
+    [chunk, job_id]
+  );
+
+  res.send({ok:true});
+});
+
 
 /* Agent Send Result */
 app.post("/agent/job/result", async (req, res) => {

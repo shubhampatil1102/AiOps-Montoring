@@ -1,18 +1,20 @@
 import { Link } from "react-router-dom";
+import GlassCard from "./GlassCard";
 
 export default function Sidebar() {
   return (
-    <div style={{
-      width: 230,
-      background: "#ecf3fa",
-      color: "black",
-      padding: 20,
-      display: "flex",
-      flexDirection: "column",
-      gap: 5
-    }}>
+    <div className="glass" style={{
+    width: 200,
+    margin: 16,
+    borderRadius: 18,
+    padding: 12,
+    display: "flex",
+    flexDirection: "column",
+    height: "calc(100vh - 32px)"
+}}>
+<>
       <h2 style={{ marginBottom: 10 }}>SysOps Tool</h2>
-
+</>
       <Nav to="/">Dashboard</Nav>
       <Nav to="/devices">Devices</Nav>
       <Nav to="/incidents">Incidents</Nav>

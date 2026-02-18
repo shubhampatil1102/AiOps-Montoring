@@ -1,4 +1,21 @@
 import { Link } from "react-router-dom";
+import { useTheme } from "../../themeContext";
+
+const { theme, toggle } = useTheme();
+<button
+  onClick={toggle}
+  style={{
+    marginTop: "auto",
+    padding: 10,
+    borderRadius: 12,
+    background: theme.accentSoft,
+    color: theme.text,
+    border: "none",
+    cursor: "pointer"
+  }}
+>
+  Switch Theme
+</button>
 
 export default function Sidebar() {
     return (
@@ -6,7 +23,7 @@ export default function Sidebar() {
             width: 220,
             background: "#272b32",
             color: "white",
-            padding: 20
+            padding: 10
         }}>
             <h2>AiOps</h2>
 

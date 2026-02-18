@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import UsageBar from "../components/UsageBar";
+import GlassCard from "../components/GlassCard";
 
 export default function Dashboard() {
 
@@ -21,7 +22,6 @@ export default function Dashboard() {
         refetchInterval: 5000
     });
 
-    // HEALTH CLASSIFICATION
     const healthy = devices.filter((d: any) =>
         Date.now() - d.time < 20000 && d.cpu < 70 && d.ram < 80
     );
@@ -44,6 +44,7 @@ export default function Dashboard() {
     );
 
     return (
+
         <div style={{ padding: 20 }}>
 
             <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 20 }}>
@@ -57,105 +58,113 @@ export default function Dashboard() {
                 gap: 20,
                 marginBottom: 30
             }}>
-
                 <HealthCard title="Healthy" value={healthy.length} color="#22c55e" />
                 <HealthCard title="Warning" value={warning.length} color="#f59e0b" />
                 <HealthCard title="Critical" value={critical.length} color="#ef4444" />
                 <HealthCard title="Offline" value={offline.length} color="#6b7280" />
-
             </div>
 
             {/* MAIN PANELS */}
             <div style={{
                 display: "grid",
                 gridTemplateColumns: "2fr 1fr",
-                gap: 20
+                gap: 20,
+                position: "relative",
+                zIndex: 1
             }}>
 
                 {/* DEVICES */}
-                <div className="glass" style={{  padding: 20, borderRadius: 12 }}>
-                    <h3 style={{ marginBottom: 10 }}>Devices</h3>
+                <GlassCard style={{
+                    position: "relative",
+                    zIndex: 20   // 🔥 bring above live events
+                }}>
+                    <div className="glass" style={{ padding: 20, borderRadius: 12, overflow: "visible" }}>
+                        <h3 style={{ marginBottom: 10 }}>Devices</h3>
 
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead>
-                            <tr style={{ background: "#f1f5f9" }}>
-                                <th style={th}>Device</th>
-                                <th style={th}>CPU</th>
-                                <th style={th}>RAM</th>
-                                <th style={th}>Status</th>
-                            </tr>
-                        </thead>
+                        <table style={{ width: "100%", borderCollapse: "collapse", overflow: "visible" }}>
+                            <thead>
+                                <tr style={{ background: "#f1f5f9" }}>
+                                    <th style={th}>Device</th>
+                                    <th style={th}>CPU</th>
+                                    <th style={th}>RAM</th>
+                                    <th style={th}>Status</th>
+                                </tr>
+                            </thead>
 
-                        <tbody>
-                            {devices.map((d: any) => {
-                                const online = Date.now() - d.time < 20000;
+                            <tbody>
+                                {devices.map((d: any) => {
+                                    const online = Date.now() - d.time < 20000;
 
-                                let status = "Healthy";
-                                let color = "#22c55e";
+                                    let status = "Healthy";
+                                    let color = "#22c55e";
 
-                                if (!online) { status = "Offline"; color = "#6b7280"; }
-                                else if (d.cpu > 90 || d.ram > 90) { status = "Critical"; color = "#ef4444"; }
-                                else if (d.cpu > 70 || d.ram > 80) { status = "Warning"; color = "#f59e0b"; }
+                                    if (!online) { status = "Offline"; color = "#6b7280"; }
+                                    else if (d.cpu > 90 || d.ram > 90) { status = "Critical"; color = "#ef4444"; }
+                                    else if (d.cpu > 70 || d.ram > 80) { status = "Warning"; color = "#f59e0b"; }
 
-                                return (
-                                    <tr key={d.id}>
-                                        <td style={td}>{d.id}</td>
-                                        <td style={td}><UsageBar value={d.cpu || 0} /></td>
-                                        <td style={td}><UsageBar value={d.ram || 0} /></td>
-                                        <td style={td}>
-                                            <span style={{
-                                                padding: "4px 10px",
-                                                borderRadius: 20,
-                                                background: color + "30",
-                                                color,
-                                                fontWeight: 600,
-                                                fontSize: 12
-                                            }}>
-                                                {status}
-                                            </span>
-                                        </td>
-
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                    return (
+                                        <tr key={d.id}>
+                                            <td style={td}>{d.id}</td>
+                                            <td style={td}><UsageBar value={d.cpu || 0} /></td>
+                                            <td style={td}><UsageBar value={d.ram || 0} /></td>
+                                            <td style={td}>
+                                                <span style={{
+                                                    padding: "4px 10px",
+                                                    borderRadius: 20,
+                                                    background: color + "30",
+                                                    color,
+                                                    fontWeight: 600,
+                                                    fontSize: 12
+                                                }}>
+                                                    {status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </GlassCard>
 
                 {/* LIVE INCIDENTS */}
-                <div className="glass"
-                style={{ 
-                    padding: 20,
-                    borderRadius: 12,
-                    height: 520,
-                    display: "flex",
-                    flexDirection: "column"
+                <GlassCard style={{
+                    position: "relative",
+                    zIndex: 1   // 🔥 keep below tooltip
                 }}>
-                    <h3>Live Events</h3>
+                    <div className="glass"
+                        style={{
+                            padding: 20,
+                            borderRadius: 12,
+                            height: 520,
+                            display: "flex",
+                            flexDirection: "column"
+                        }}>
 
-                    <div style={{ overflowY: "auto", marginTop: 10 }}>
-                        {alerts.map((a: any) => (
-                            <div key={a.time} style={{
-                                borderBottom: "1px solid #e5e7eb",
-                                padding: "10px 0"
-                            }}>
-                                <div style={{ fontWeight: 600 }}>{a.id}</div>
-                                <div style={{ color: "#ef4444", fontSize: 13 }}>{a.message}</div>
-                                <div style={{ fontSize: 11, color: "#6b7280" }}>
-                                    {new Date(Number(a.time)).toLocaleTimeString()}
+                        <h3>Live Events</h3>
+
+                        <div style={{ overflowY: "auto", marginTop: 10 }}>
+                            {alerts.map((a: any) => (
+                                <div key={a.time} style={{
+                                    borderBottom: "1px solid #e5e7eb",
+                                    padding: "10px 0"
+                                }}>
+                                    <div style={{ fontWeight: 600 }}>{a.id}</div>
+                                    <div style={{ color: "#ef4444", fontSize: 13 }}>{a.message}</div>
+                                    <div style={{ fontSize: 11, color: "#6b7280" }}>
+                                        {new Date(Number(a.time)).toLocaleTimeString()}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-
+                </GlassCard>
             </div>
-
         </div>
     );
 }
-function HealthCard({ title, value, color = "#3b82f6" }: any) {
 
+function HealthCard({ title, value, color = "#3b82f6" }: any) {
 
     const isCritical =
         (title === "Offline" && value > 0) ||
@@ -178,16 +187,12 @@ function HealthCard({ title, value, color = "#3b82f6" }: any) {
                 e.currentTarget.style.transform = "translateY(0px) scale(1)";
             }}
         >
-
-            {/* glow */}
             <div style={{
                 position: "absolute",
                 inset: 0,
                 background: `radial-gradient(circle at top left, ${color || "#3b82f6"}55, transparent 65%)`
-
             }} />
 
-            {/* content */}
             <div style={{ fontSize: 14, opacity: .7, marginBottom: 8 }}>
                 {title}
             </div>
@@ -195,12 +200,9 @@ function HealthCard({ title, value, color = "#3b82f6" }: any) {
             <div style={{ fontSize: 48, fontWeight: 700, color }}>
                 {value}
             </div>
-
         </div>
     );
 }
-
-
 
 const th = { padding: 12, textAlign: "left" as const };
 const td = { padding: 12, borderTop: "1px solid #e2e8f0" };

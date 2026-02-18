@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchDevices } from "@/api/devices";
 import { useNavigate } from "react-router-dom";
+import GlassCard from "../components/GlassCard";
 
 export default function Devices() {
 
@@ -36,7 +37,8 @@ export default function Devices() {
   if (isError) return <h2 style={{ padding: 40 }}>API Error</h2>;
 
   return (
-    <div style={{ padding: 20, backgroundColor: "#d6e7f8", borderRadius: 12 }}>
+    <GlassCard>
+    <div style={{ padding: 20, borderRadius: 12 }}>
       <h2 style={{ marginBottom: 20 }}>Devices</h2>
 
       <table style={{
@@ -46,6 +48,7 @@ export default function Devices() {
         borderCollapse: "collapse",
         
       }}>
+        
         <thead>
           <tr style={{ background: "#f1f5f9" }}>
             <th style={th}>Device</th>
@@ -57,6 +60,7 @@ export default function Devices() {
         </thead>
 
         <tbody>
+
           {devices.map((d: any) => {
             const online = Date.now() - d.time < 20000;
 
@@ -88,9 +92,12 @@ export default function Devices() {
               </tr>
             );
           })}
+        
         </tbody>
+        
       </table>
     </div>
+    </GlassCard>
   );
 }
 

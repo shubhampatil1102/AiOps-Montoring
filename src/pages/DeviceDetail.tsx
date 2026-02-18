@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import GlassCard from "../components/GlassCard";
 
 export default function DeviceDetail() {
   const { id = "" } = useParams();
@@ -47,41 +48,77 @@ export default function DeviceDetail() {
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
-      <h1 style={{ fontSize: 28 }}>Device: {id}</h1>
+      <h1 style={{ fontSize: 20 }}>Device: {id}</h1>
       <hr />
 
       {/* Info */}
-      <div style={{ display: "flex", gap: 50 }}>
-        <Info title="CPU" value={`${device?.cpu?.toFixed(1) ?? 0}%`} />
-        <Info title="RAM" value={`${device?.ram?.toFixed(1) ?? 0}%`} />
-        <Info
-          title="Status"
-          value={Date.now() - (device?.time ?? 0) < 20000 ? "ONLINE" : "OFFLINE"}
-          color={Date.now() - (device?.time ?? 0) < 20000 ? "#22c55e" : "#ef4444"}
-        />
-      </div>
+      <GlassCard>
+        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", fontWeight: 600 }}>
+
+          <Info title="CPU" value={`${device?.cpu?.toFixed(1) ?? 0}%`} />
+          <Info title="RAM" value={`${device?.ram?.toFixed(1) ?? 0}%`} />
+          <Info
+            title="Status"
+            value={Date.now() - (device?.time ?? 0) < 20000 ? "ONLINE" : "OFFLINE"}
+            color={Date.now() - (device?.time ?? 0) < 20000 ? "#22c55e" : "#ef4444"}
+          />
+        </div>
+      </GlassCard>
+
 
       {/* Range */}
-      <div style={{ display: "flex", gap: 20 }}>
-        <button onClick={() => setRange("1h")}>1H</button>
-        <button onClick={() => setRange("1d")}>1D</button>
-        <button onClick={() => setRange("1w")}>1W</button>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 15, maxWidth: 400 }}>
+        <button onClick={() => setRange("1h")} style={{
+          marginTop: 10,
+          marginLeft: 10,
+          padding: "10px 16px",
+          borderRadius: 8,
+          background: "#38fc80",
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 600,
+        }}>1H</button>
+        <button onClick={() => setRange("1d")}style={{
+          marginTop: 10,
+          marginLeft: 10,
+          padding: "10px 16px",
+          borderRadius: 8,
+          background: "#38fc80",
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 600,
+        }}>1D</button>
+        <button onClick={() => setRange("1w")} style={{
+          marginTop: 10,
+          marginLeft: 10,
+          padding: "10px 16px",
+          borderRadius: 8,
+          background: "#38fc80",
+          border: "none",
+          cursor: "pointer",
+          fontWeight: 600,
+        }}>1W</button>
       </div>
 
       {/* Charts */}
+
       <Chart title="CPU Usage %" data={history} dataKey="cpu" color="#22c55e" />
       <Chart title="RAM Usage %" data={history} dataKey="ram" color="#3b82f6" />
 
       {/* Processes */}
-      <div style={{ background: "#b6c6e8", padding: 16, borderRadius: 12 }}>
-        <h3>Top Processes</h3>
+
+      <div style={{ background: "#fbfcfd", padding: 16, borderRadius: 12 }}>
+        <h3 style={{ marginBottom: 10 }}>Top Processes</h3>
         {processes.map((p: any) => (
           <div key={p.name} style={{ display: "flex", justifyContent: "space-between" }}>
             <span>{p.name}</span>
             <span>{p.cpu}%</span>
           </div>
+
         ))}
       </div>
+
 
       {/* EVENTS TIMELINE */}
       <div style={{ background: "white", padding: 15, borderRadius: 12 }}>
@@ -94,10 +131,10 @@ export default function DeviceDetail() {
                 {e.type === "OFFLINE"
                   ? "🔴"
                   : e.type === "ONLINE"
-                  ? "🟢"
-                  : e.type.includes("CPU")
-                  ? "🟠"
-                  : "🟡"}
+                    ? "🟢"
+                    : e.type.includes("CPU")
+                      ? "🟠"
+                      : "🟡"}
               </span>
 
               <div>
@@ -116,11 +153,11 @@ export default function DeviceDetail() {
 
 /* small components */
 
-function Info({ title, value, color = "white" }: any) {
+function Info({ title, value, color = "black" }: any) {
   return (
-    <div style={{ background: "#111827", padding: 20, borderRadius: 12 }}>
-      <div style={{ color: "#9ca3af" }}>{title}</div>
-      <div style={{ fontSize: 22, color }}>{value}</div>
+    <div style={{ background: "#ececf4", padding: 20, borderRadius: 12 }}>
+      <div style={{ color: "#090909" }}>{title}</div>
+      <div style={{ fontFamily: "monospace", fontSize: 24, color, fontWeight: 800 }}>{value}</div>
     </div>
   );
 }
@@ -132,7 +169,7 @@ function Chart({ title, data, dataKey, color }: any) {
   }));
 
   return (
-    <div style={{ background: "#292b35", padding: 20, borderRadius: 12 }}>
+    <div style={{ background: "#e1e5fc", padding: 20, borderRadius: 12 }}>
       <h3>{title}</h3>
       <ResponsiveContainer width="100%" height={250}>
         <LineChart data={formatted}>

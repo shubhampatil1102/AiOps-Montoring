@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import GlassCard from "../components/GlassCard";
 
 export default function Policies() {
   const queryClient = useQueryClient();
@@ -50,10 +51,10 @@ export default function Policies() {
 
   return (
     <div style={{ maxWidth: 500 }}>
-      <h1 style={{ fontSize: 26, marginBottom: 20 }}>Alert Policies</h1>
+      <h1 style={{ fontSize: 30, marginBottom: 20 }}>Alert Policies</h1>
 
-      <Card label="CPU Threshold (%)">
-        <input
+      <Card label="CPU Threshold (%)" >
+        <input style={{border:"none", backgroundColor:"#8efeb7", padding: 8, borderRadius: 10, marginTop: 10}}
           type="number"
           value={cpu}
           onChange={(e) => setCpu(+e.target.value)}
@@ -61,7 +62,7 @@ export default function Policies() {
       </Card>
 
       <Card label="RAM Threshold (%)">
-        <input
+        <input style={{border:"none", backgroundColor:"#8efeb7", padding: 8, borderRadius: 10, marginTop: 10}}
           type="number"
           value={ram}
           onChange={(e) => setRam(+e.target.value)}
@@ -69,7 +70,7 @@ export default function Policies() {
       </Card>
 
       <Card label="Offline Timeout (seconds)">
-        <input
+        <input style={{border:"none", backgroundColor:"#8efeb7", padding: 8, borderRadius: 10, marginTop: 10}}
           type="number"
           value={offline}
           onChange={(e) => setOffline(+e.target.value)}
@@ -79,7 +80,8 @@ export default function Policies() {
       <button
         onClick={() => mutation.mutate()}
         style={{
-          marginTop: 20,
+          marginTop: 10,
+          marginLeft: 10,
           padding: "10px 16px",
           borderRadius: 8,
           background: "#22c55e",
@@ -94,20 +96,13 @@ export default function Policies() {
   );
 }
 
+
 // small reusable card
 function Card({ label, children }: any) {
   return (
-    <div
-      style={{
-        marginBottom: 16,
-        padding: 16,
-        background: "#111827",
-        border: "1px solid #1f2937",
-        borderRadius: 12,
-      }}
-    >
-      <div style={{ marginBottom: 6, color: "#9ca3af" }}>{label}</div>
+    <GlassCard style={{ marginBottom: 16 }}>
+      <div style={{ height: 20, fontFamily: "monospace", marginTop: 12 }}>{label}</div>
       {children}
-    </div>
+    </GlassCard>
   );
 }

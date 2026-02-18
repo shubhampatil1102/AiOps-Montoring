@@ -2,8 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchAlerts } from "@/api/alerts";
 import SeverityBadge from "@/components/SeverityBadge";
 import { timeAgo } from "@/utils/time";
-import IncidentGroupCard from "@/components/IncidentGroupCard";
-import { groupAlerts } from "@/utils/groupalerts";
 
 
 export default function Incidents() {
@@ -13,23 +11,13 @@ export default function Incidents() {
     refetchInterval: 5000,
   });
 
-  const groups = groupAlerts(alerts);
 
-return (
-  <div>
-    <h1 style={{ fontSize: 26, marginBottom: 20 }}>Incidents</h1>
-
-    {groups.map((g:any)=>(
-      <IncidentGroupCard key={g.device} group={g}/>
-    ))}
-  </div>
-);
 
   return (
     <div>
       <h1 style={{ fontSize: 26, marginBottom: 20 }}>Incidents</h1>
 
-      <div style={{ border: "1px solid #1f2937", borderRadius: 12 }}>
+      <div style={{ border: "1px solid #b5c3d6", borderRadius: 12 }}>
         {alerts.map((a: any, i: number) => (
           <div
             key={i}
@@ -40,9 +28,9 @@ return (
               justifyContent: "space-between",
               alignItems: "center",
               background: a.acknowledged
-                ? "#020617"
+                ? "#b7c3f5"
                 : i % 2
-                ? "#020617"
+                ? "#e1e5f7"
                 : "transparent",
               opacity: a.acknowledged ? 0.5 : 1,
             }}
@@ -53,7 +41,7 @@ return (
 
               <div>
                 <div style={{ fontWeight: 600 }}>{a.id}</div>
-                <div style={{ color: "#9ca3af", fontSize: 13 }}>
+                <div style={{ color: "#676b72", fontSize: 13 }}>
                   {a.message}
                 </div>
               </div>
