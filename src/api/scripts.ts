@@ -47,3 +47,8 @@ export async function runLibrary(device:string,script_id:number){
   });
   return r.json();
 }
+
+export async function fetchApprovals(){
+  const r = await fetch("http://localhost:4000/scripts/approvals");
+  return r.json();
+}

@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { runScript, fetchJobs, fetchLibrary, runLibrary } from "@/api/scripts";
+import { runScript, fetchJobs, fetchLibrary, runLibrary, fetchApprovals } from "@/api/scripts";
 import { fetchDevices } from "@/api/devices";
 import GlassCard from "../components/GlassCard";
 
@@ -78,6 +78,12 @@ export default function Scripts() {
     const runLib = useMutation({
         mutationFn: ({ device, script_id }: any) =>
             runLibrary(device, script_id)
+    });
+
+    const { data: approvals = [] } = useQuery({
+        queryKey: ["approvals"],
+        queryFn: fetchApprovals,
+        refetchInterval: 3000
     });
 
     /* ---------------- HELPERS ---------------- */
@@ -343,6 +349,70 @@ export default function Scripts() {
 
                 </div>
             </div>
+
+            {/* APPROVAL TIMELINE */}
+            <div style={card}>
+                <h3>Approval Timeline</h3>
+                <div style={{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:15}}>
+                    
+                    <button style={btn}>ASC</button>
+                    <button style={btn}>DESC</button>
+                    <button style={btn}>Clear</button>
+                </div>
+
+                <div style={{ maxHeight: 420, overflowY: "auto" }}>
+
+                    {approvals.length === 0 && (
+                        <div style={{ opacity: .6 }}>No approval actions yet</div>
+                    )}
+
+                    {approvals.map((a: any) => (
+                        <div key={a.time} style={{
+                            borderBottom: "1px solid #eee",
+                            padding: "12px 0"
+                        }}>
+
+                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                                <b>Job #{a.job_id}</b>
+
+                        
+
+                                <span style={{
+                                    color:
+                                        a.status === "APPROVED" ? "#22c55e" :
+                                            a.status === "REJECTED" ? "#ef4444" : "#64748b",
+                                    fontWeight: 600
+                                }}>
+                                    {a.status}
+                                </span>
+                            </div>
+
+                            <div style={{ fontSize: 13, marginTop: 3 }}>
+                                User: <b>{a.approval_user}</b> 
+                                <div>
+                                    Script : <b>{a.script}</b>
+                                </div>
+                                <div>
+                                    Output : <b>{a.output || "No output"}</b>
+                                </div>
+                                
+                            </div>
+
+                            {a.message && (
+                                <div style={{ fontSize: 13, opacity: .8 }}>
+                                    {a.message}
+                                </div>
+                            )}
+
+                            <div style={{ fontSize: 11, opacity: .6 }}>
+                                {new Date(Number(a.time)).toLocaleString()}
+                            </div>
+
+                        </div>
+                    ))}
+                </div>
+            </div>
+
 
         </div >
     );

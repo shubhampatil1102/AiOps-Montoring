@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchDevices } from "@/api/devices";
 import { useNavigate } from "react-router-dom";
 import GlassCard from "../components/GlassCard";
+import { timeAgo } from "../utils/time";
 
 export default function Devices() {
 
@@ -38,65 +39,72 @@ export default function Devices() {
 
   return (
     <GlassCard>
-    <div style={{ padding: 20, borderRadius: 12 }}>
-      <h2 style={{ marginBottom: 20 }}>Devices</h2>
+      <div style={{ padding: 20, borderRadius: 12 }}>
+        <h2 style={{ marginBottom: 20 }}>Devices</h2>
 
-      <table style={{
-        width: "100%",
-        background: "white",
-        borderRadius: 10,
-        borderCollapse: "collapse",
-        
-      }}>
-        
-        <thead>
-          <tr style={{ background: "#f1f5f9" }}>
-            <th style={th}>Device</th>
-            <th style={th}>CPU</th>
-            <th style={th}>RAM</th>
-            <th style={th}>Uptime</th>
-            <th style={th}>Status</th>
-          </tr>
-        </thead>
+        <table style={{
+          width: "100%",
+          background: "white",
+          borderRadius: 10,
+          borderCollapse: "collapse",
 
-        <tbody>
+        }}>
 
-          {devices.map((d: any) => {
-            const online = Date.now() - d.time < 20000;
+          <thead>
+            <tr style={{ background: "#f1f5f9" }}>
+              <th style={th}>Device</th>
+              <th style={th}>CPU</th>
+              <th style={th}>RAM</th>
+              <th style={th}>Uptime</th>
+              <th style={th}>Last Seen</th>
+              <th style={th}>Status</th>
+            </tr>
+          </thead>
 
-            return (
-              <tr
-                key={d.id}
-                onClick={() => navigate(`/devices/${d.id}`)}
-                style={{
-                  cursor: "pointer",
-                  transition: "0.2s",
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
-                onMouseLeave={e => (e.currentTarget.style.background = "white")}
-              >
-                <td style={td}>{d.id}</td>
-                <td style={td}>{Number(d.cpu || 0).toFixed(1)}%</td>
-                <td style={td}>{Number(d.ram || 0).toFixed(1)}%</td>
-                <td style={td}>{formatUptime(d.boot_time)}</td>
+          <tbody>
 
-                <td style={td} title={getReason(d)}>
-                  <span style={{
-                    color: online ? "#16a34a" : "#ef4444",
-                    fontWeight: 600,
-                    cursor: "help"
-                  }}>
-                    {online ? "ONLINE" : "OFFLINE"}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        
-        </tbody>
-        
-      </table>
-    </div>
+            {devices.map((d: any) => {
+              const online = Date.now() - d.time < 20000;
+
+              return (
+                <tr
+                  key={d.id}
+                  onClick={() => navigate(`/devices/${d.id}`)}
+                  style={{
+                    cursor: "pointer",
+                    transition: "0.2s",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "white")}
+                >
+                  <td style={td}><div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div className={`pulse-dot ${Date.now() - d.time > 20000 ? "device-offline" : ""}`} />
+                    &nbsp; {d.id}
+                  </div></td>
+                  <td style={td}>{Number(d.cpu || 0).toFixed(1)}%</td>
+                  <td style={td}>{Number(d.ram || 0).toFixed(1)}%</td>
+                  <td style={td}>{formatUptime(d.boot_time)}</td>
+                  <td style={{ ...td, fontSize: 12, opacity: .7 }}>
+                    {timeAgo(d.time)}
+                  </td>
+
+                  <td style={td} title={getReason(d)}>
+                    <span style={{
+                      color: online ? "#16a34a" : "#ef4444",
+                      fontWeight: 600,
+                      cursor: "help"
+                    }}>
+                      {online ? "ONLINE" : "OFFLINE"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+
+          </tbody>
+
+        </table>
+      </div>
     </GlassCard>
   );
 }

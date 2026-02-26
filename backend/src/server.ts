@@ -1,12 +1,24 @@
 import express from "express";
 import cors from "cors";
 import { db } from "./db";
+import { styleText } from "node:util";
+import { analyzeDeviceHealth } from "./ai/aiEngine";
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json());
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+async function createSuggestion(device_id: string, type: string, reason: string, action: string, script: string) {
+
+  const result = await db.query(
+    `INSERT INTO heal_suggestions(device_id,alert_type,reason,suggested_action,script,created_at)
+     VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
+    [device_id, type, reason, action, script, Date.now()]
+  );
+
+  return result.rows[0].id;
+}
 
 /* ---------------- HELPERS ---------------- */
 async function addEvent(id: string, type: string, message: string) {
@@ -57,10 +69,17 @@ async function checkCpuAnomaly(id: string, cpu: number) {
   }
 }
 
+
 /* ---------------- METRICS INGEST ---------------- */
 app.post("/metrics", async (req, res) => {
+
+  console.log("FULL METRICS BODY:", req.body);
+
   const { id, cpu, ram, boot_time = null, processes = [] } = req.body;
   const now = Date.now();
+
+  console.log("FULL METRICS BODY:", req.body);
+
 
   /* DEVICE UPSERT */
   await db.query(
@@ -76,6 +95,171 @@ app.post("/metrics", async (req, res) => {
        boot_time=$5`,
     [id, cpu, ram, now, boot_time]
   );
+
+  if (req.body.compliance) {
+    try {
+      const c = req.body.compliance;
+
+      console.log("Saving compliance for", id, c);
+
+      await db.query(`
+      INSERT INTO device_compliance
+      (device_id,bitlocker,tpm,secureboot,defender,updated_at)
+      VALUES($1,$2,$3,$4,$5,$6)
+      ON CONFLICT(device_id)
+      DO UPDATE SET
+        bitlocker=$2,
+        tpm=$3,
+        secureboot=$4,
+        defender=$5,
+        updated_at=$6
+    `,
+        [
+          id,
+          c.bitlocker,
+          c.tpm,
+          c.secureBoot,
+          c.defender,
+          Date.now()
+        ]);
+
+    } catch (err) {
+      console.log("COMPLIANCE INSERT ERROR:", err);
+    }
+  }
+
+  if (req.body.hardware) {
+
+    const h = req.body.hardware;
+
+    const score =
+      100
+      - (h.cpu_temp > 80 ? 25 : 0)
+      - (h.disk > 90 ? 25 : 0)
+      - (h.battery < 20 ? 20 : 0);
+
+    const risk =
+      score > 80 ? "LOW" :
+        score > 50 ? "MEDIUM" :
+          "HIGH";
+
+    await db.query(`
+    INSERT INTO device_hardware(
+      device_id,
+      cpu_usage,
+      ram_usage,
+      disk,
+      disk_free,
+      cpu_temp,
+      battery,
+      fan_status,
+      health_score,
+      risk,
+      updated_at
+    )
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+
+    ON CONFLICT(device_id)
+    DO UPDATE SET
+      cpu_usage=$2,
+      ram_usage=$3,
+      disk=$4,
+      disk_free=$5,
+      cpu_temp=$6,
+      battery=$7,
+      fan_status=$8,
+      health_score=$9,
+      risk=$10,
+      updated_at=$11
+  `,
+      [
+        id,
+        cpu,
+        ram,
+        h.disk,
+        h.disk_free,
+        h.cpu_temp,
+        h.battery,
+        h.fan_status,
+        score,
+        risk,
+        Date.now()
+      ]);
+  }
+  const aiIssues = await analyzeDeviceHealth(req.body);
+
+  for (const issue of aiIssues) {
+
+    await createSuggestion(
+      id,
+      issue.type,
+      issue.reason,
+      issue.action,
+      "AI Generated Fix"
+    );
+  }
+
+  /* ================= HARDWARE SAVE ================= */
+
+if (req.body.hardware) {
+  try {
+
+    const h = req.body.hardware;
+
+    console.log("Saving hardware:", id, h);
+
+    await db.query(`
+      INSERT INTO device_hardware
+      (device_id,disk,disk_free,cpu_temp,
+       battery_health,battery_health_percent,
+       fan_status,updated_at)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+      ON CONFLICT(device_id)
+      DO UPDATE SET
+        disk=$2,
+        disk_free=$3,
+        cpu_temp=$4,
+        battery_health=$5,
+        battery_health_percent=$6,
+        fan_status=$7,
+        updated_at=$8
+    `,
+    [
+      id,
+      h.disk,
+      h.disk_free,
+      h.cpu_temp,
+      h.battery_health,
+      h.battery_health_percent,
+      h.fan_status,
+      Date.now()
+    ]);
+
+  } catch(err){
+    console.log("HARDWARE SAVE ERROR:", err);
+  }
+}
+  async function attemptAutoHeal(id: string, alertType: string) {
+
+    const rule = await db.query(
+      "SELECT * FROM heal_rules WHERE alert_type=$1 AND auto_enabled=true LIMIT 1",
+      [alertType]
+    );
+
+    if (!rule.rows[0]) return;
+
+    await db.query(
+      `INSERT INTO script_jobs(device_id,script,status,created_at)
+     VALUES($1,$2,'PENDING',$3)`,
+      [id, rule.rows[0].script, Date.now()]
+    );
+
+    await db.query(
+      "UPDATE alerts SET auto_healed=true WHERE id=$1 AND resolved=false",
+      [id]
+    );
+  }
+
 
   /* HISTORY */
   await db.query(
@@ -95,15 +279,31 @@ app.post("/metrics", async (req, res) => {
 
   /* CPU ALERT */
   if (cpu > POLICY.cpu_threshold) {
-    const top = processes.sort((a: any, b: any) => b.cpu - a.cpu)[0];
-    const msg = `High CPU ${cpu}%${top ? ` (${top.name})` : ""}`;
 
-    await db.query(
-      "INSERT INTO alerts(id,message,time,acknowledged,resolved) VALUES ($1,$2,$3,false,false)",
+    const top = processes.sort((a: any, b: any) => b.cpu - a.cpu)[0];
+    const msg = `High CPU ${cpu}% (${top?.name || "unknown"})`;
+
+    const alert = await db.query(
+      "INSERT INTO alerts(id,message,time,acknowledged,resolved) VALUES ($1,$2,$3,false,false) RETURNING time",
       [id, msg, now]
     );
-    await addEvent(id, "CPU_HIGH", msg);
+
+    if (top) {
+      const suggestionId = await createSuggestion(
+        id,
+        "CPU_HIGH",
+        `${top.name} using ${top.cpu}% CPU`,
+        `Kill process ${top.name}`,
+        `Stop-Process -Name "${top.name}" -Force`
+      );
+
+      await db.query(
+        "UPDATE alerts SET suggestion_id=$1 WHERE time=$2",
+        [suggestionId, alert.rows[0].time]
+      );
+    }
   }
+
 
   /* RAM ALERT */
   if (ram > POLICY.ram_threshold) {
@@ -125,15 +325,23 @@ app.get("/devices", async (_, res) => {
   const result = await db.query("SELECT * FROM devices");
   res.send(result.rows);
 });
-
-app.get("/devices/:id", async (req, res) => {
-  const result = await db.query(
-    "SELECT * FROM devices WHERE id=$1",
+app.get("/devices/:id/compliance", async (req, res) => {
+  const r = await db.query(
+    "SELECT * FROM device_compliance WHERE device_id=$1",
     [req.params.id]
   );
-  res.send(result.rows[0] || {});
+  res.send(r.rows[0] || {});
 });
 
+app.get("/devices/:id/hardware", async (req,res)=>{
+
+  const r = await db.query(
+    "SELECT * FROM device_hardware WHERE device_id=$1",
+    [req.params.id]
+  );
+
+  res.send(r.rows[0] || {});
+});
 /* ---------------- HISTORY ---------------- */
 app.get("/devices/:id/history", async (req, res) => {
   const range = req.query.range || "1h";
@@ -153,6 +361,8 @@ app.get("/devices/:id/history", async (req, res) => {
   res.send(result.rows);
 });
 
+
+
 /* ---------------- EVENTS (TIMELINE) ---------------- */
 app.get("/devices/:id/events", async (req, res) => {
   const result = await db.query(
@@ -167,6 +377,68 @@ app.get("/devices/:id/events", async (req, res) => {
     time: Number(r.time)
   })));
 });
+app.get("/devices/:id", async (req, res) => {
+  const result = await db.query(
+    "SELECT * FROM devices WHERE id=$1",
+    [req.params.id]
+  );
+  res.send(result.rows[0] || {});
+});
+
+app.get("/test-route", (_, res) => {
+  res.send("Working");
+});
+
+
+
+/* ---------------- HEAL SUGGESTIONS ---------------- */
+app.get("/heal/suggestions", async (_, res) => {
+
+  const r = await db.query(
+    `SELECT *,
+      to_timestamp(created_at/1000) as created_readable
+     FROM heal_suggestions
+     WHERE status='PENDING'
+     ORDER BY created_at DESC`
+  );
+
+  res.send(r.rows);
+});
+
+
+app.post("/heal/approve/:id", async (req, res) => {
+
+  const s = await db.query(
+    "SELECT * FROM heal_suggestions WHERE id=$1",
+    [req.params.id]
+  );
+
+  if (!s.rows[0]) return res.sendStatus(404);
+  const sug = s.rows[0];
+
+  await db.query(
+    "UPDATE heal_suggestions SET status='APPROVED' WHERE id=$1",
+    [sug.id]
+  );
+
+  await db.query(
+    `INSERT INTO script_jobs(device_id,script,status,created_at)
+     VALUES($1,$2,'PENDING',$3)`,
+    [sug.device_id, sug.script, Date.now()]
+  );
+
+  res.send({ ok: true });
+});
+
+
+app.post("/heal/reject/:id", async (req, res) => {
+  await db.query(
+    "UPDATE heal_suggestions SET status='REJECTED' WHERE id=$1",
+    [req.params.id]
+  );
+  res.send({ ok: true });
+});
+
 
 /* ================= SCRIPT LIBRARY ================= */
 
@@ -313,47 +585,42 @@ app.post("/scripts/run", async (req, res) => {
 
 
 /* Agent Pull Job */
-app.get("/agent/job/:device", async (req, res) => {
+app.get("/agent/job/:deviceId", async (req, res) => {
 
-  const device = req.params.device.trim();
-
-  console.log("Agent asking job for:", device);
-
-  const job = await db.query(
-    `SELECT id,script
+  const r = await db.query(
+    `SELECT id, script, timeout
      FROM script_jobs
      WHERE device_id=$1 AND status='PENDING'
      ORDER BY id ASC
      LIMIT 1`,
-    [device]
+    [req.params.deviceId]
   );
 
-  if (job.rowCount === 0) {
-    console.log("No job for", device);
+  if (r.rows.length === 0)
     return res.send({});
-  }
+
+  const job = r.rows[0];
 
   await db.query(
-    "UPDATE script_jobs SET status='RUNNING',started_at=$1 WHERE id=$2",
-    [Date.now(), job.rows[0].id]
+    "UPDATE script_jobs SET status='RUNNING', started_at=$1 WHERE id=$2",
+    [Date.now(), job.id]
   );
 
-  console.log("JOB SENT:", job.rows[0].id);
-
   res.send({
-    job_id: job.rows[0].id,
-    script: job.rows[0].script,
-    timeout: 120
+    job_id: job.id,
+    script: job.script,
+    timeout: job.timeout || 120
   });
 });
 
+
 /* LIVE LOG STREAM */
-app.post("/agent/job/log", async (req,res)=>{
+app.post("/agent/job/log", async (req, res) => {
 
   const { job_id, chunk } = req.body;
 
-  if(!job_id || chunk===undefined)
-    return res.status(400).send({error:"invalid log payload"});
+  if (!job_id || chunk === undefined)
+    return res.status(400).send({ error: "invalid log payload" });
 
   await db.query(
     `UPDATE script_jobs
@@ -362,7 +629,7 @@ app.post("/agent/job/log", async (req,res)=>{
     [chunk, job_id]
   );
 
-  res.send({ok:true});
+  res.send({ ok: true });
 });
 
 
@@ -371,10 +638,11 @@ app.post("/agent/job/result", async (req, res) => {
 
   let { job_id, success, output, error } = req.body;
 
-  // force boolean conversion
   success = success === true || success === "true";
 
   console.log("JOB RESULT:", job_id, success);
+
+  const finishedTime = Date.now();
 
   await db.query(
     `UPDATE script_jobs
@@ -387,7 +655,7 @@ app.post("/agent/job/result", async (req, res) => {
       success ? "SUCCESS" : "FAILED",
       output ?? "",
       error ?? "",
-      Date.now(),
+      finishedTime,
       job_id
     ]
   );
@@ -407,6 +675,96 @@ app.get("/scripts/jobs", async (_, res) => {
   );
 
   res.send(r.rows);
+});
+
+/* -------- APPROVAL HISTORY -------- */
+/* ---------------- APPROVAL TIMELINE ---------------- */
+
+/* ---------------- APPROVAL TIMELINE ---------------- */
+
+app.get("/scripts/approvals", async (_, res) => {
+
+  const result = await db.query(`
+    SELECT
+      id as job_id,
+      device_id,
+      script,
+      approval_status as status,
+      approval_user as user,
+      agent_message as message,
+      COALESCE(approved_at,rejected_at) as time,
+      created_at
+    FROM script_jobs
+    WHERE approval_status IS NOT NULL
+    ORDER BY COALESCE(approved_at,rejected_at) DESC
+    LIMIT 100
+  `);
+
+  res.send(result.rows);
+});
+
+
+app.post("/agent/job/approval", async (req, res) => {
+
+  const { job_id, status, user, message = "", time } = req.body;
+
+  console.log("APPROVAL RECEIVED:", job_id, status);
+
+  if (!job_id || !status)
+    return res.status(400).send({ error: "Invalid approval payload" });
+
+  if (status === "APPROVED") {
+
+    await db.query(
+      `UPDATE script_jobs
+       SET approval_status='APPROVED',
+           approved_at=$2,
+           approval_user=$3
+       WHERE id=$1`,
+      [job_id, time, user]
+    );
+
+  }
+  else if (status === "REJECTED") {
+
+    await db.query(
+      `UPDATE script_jobs
+       SET approval_status='REJECTED',
+           rejected_at=$2,
+           approval_user=$3,
+           agent_message=$4,
+           status='FAILED',
+           finished_at=$2
+       WHERE id=$1`,
+      [job_id, time, user, message]
+    );
+  }
+
+  res.send({ ok: true });
+});
+
+
+app.get("/heal/timeline", async (_, res) => {
+
+  const result = await db.query(`
+    SELECT 
+      id as job_id,
+      device_id,
+      script,
+      status,
+      approval_status,
+      approval_user,
+      agent_message,
+      created_at,
+      started_at,
+      finished_at,
+      COALESCE(approved_at,rejected_at) as decision_time
+    FROM script_jobs
+    ORDER BY created_at DESC
+    LIMIT 100
+  `);
+
+  res.send(result.rows);
 });
 
 

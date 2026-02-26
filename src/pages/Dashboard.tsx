@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import UsageBar from "../components/UsageBar";
 import GlassCard from "../components/GlassCard";
+import { useEffect, useState } from "react";
 
 export default function Dashboard() {
 
@@ -13,6 +14,14 @@ export default function Dashboard() {
         refetchInterval: 5000
     });
 
+    const [, forceTick] = useState(0);
+
+    useEffect(() => {
+        const i = setInterval(() => forceTick(t => t + 1), 1000);
+        return () => clearInterval(i);
+    }, []);
+
+
     const { data: alerts = [] } = useQuery({
         queryKey: ["alerts"],
         queryFn: async () => {
@@ -21,7 +30,15 @@ export default function Dashboard() {
         },
         refetchInterval: 5000
     });
-
+ const { data: hardware } = useQuery({
+    queryKey: ["hardware", devices.map((d: any) => d.id).join(",")],
+    queryFn: async () => {
+      const r = await fetch(
+        `http://localhost:4000/devices/${devices.map((d: any) => d.id).join(",")}/hardware`);
+      return r.json();
+    },
+    refetchInterval: 4000
+  });
     const healthy = devices.filter((d: any) =>
         Date.now() - d.time < 20000 && d.cpu < 70 && d.ram < 80
     );
@@ -88,6 +105,7 @@ export default function Dashboard() {
                                     <th style={th}>CPU</th>
                                     <th style={th}>RAM</th>
                                     <th style={th}>Status</th>
+                                    <th style={th}>CPU Temp</th>
                                 </tr>
                             </thead>
 
@@ -119,6 +137,7 @@ export default function Dashboard() {
                                                     {status}
                                                 </span>
                                             </td>
+                                            <td style={td}>{hardware?.cpu_temp ? hardware.cpu_temp + " °C" : "--"}</td>
                                         </tr>
                                     );
                                 })}
@@ -141,7 +160,10 @@ export default function Dashboard() {
                             flexDirection: "column"
                         }}>
 
-                        <h3>Live Events</h3>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                             <div className="pulse-dot" />
+                            &nbsp;<h3>Live Events</h3>
+                        </div>
 
                         <div style={{ overflowY: "auto", marginTop: 10 }}>
                             {alerts.map((a: any) => (
@@ -203,6 +225,21 @@ function HealthCard({ title, value, color = "#3b82f6" }: any) {
         </div>
     );
 }
+
+function timeAgo(ts: number) {
+    const diff = Date.now() - Number(ts);
+
+    const s = Math.floor(diff / 1000);
+    if (s < 5) return "just now";
+    if (s < 60) return s + " sec ago";
+
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + " min ago";
+
+    const h = Math.floor(m / 60);
+    return h + " hr ago";
+}
+
 
 const th = { padding: 12, textAlign: "left" as const };
 const td = { padding: 12, borderTop: "1px solid #e2e8f0" };
