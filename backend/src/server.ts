@@ -128,6 +128,40 @@ app.post("/metrics", async (req, res) => {
     }
   }
 
+  if (req.body.updates) {
+
+    const u = req.body.updates;
+
+    await db.query(`
+    INSERT INTO device_updates
+    (device_id,
+     windows_update_status,
+     pending_updates,
+     failed_updates,
+     driver_status,
+     outdated_drivers,
+     last_checked)
+    VALUES($1,$2,$3,$4,$5,$6,$7)
+    ON CONFLICT(device_id)
+    DO UPDATE SET
+      windows_update_status=$2,
+      pending_updates=$3,
+      failed_updates=$4,
+      driver_status=$5,
+      outdated_drivers=$6,
+      last_checked=$7
+  `,
+      [
+        id,
+        u.windows_update_status,
+        u.pending_updates,
+        u.failed_updates,
+        u.driver_status,
+        u.outdated_drivers,
+        Date.now()
+      ]);
+  }
+
   if (req.body.hardware) {
 
     const h = req.body.hardware;
@@ -201,14 +235,14 @@ app.post("/metrics", async (req, res) => {
 
   /* ================= HARDWARE SAVE ================= */
 
-if (req.body.hardware) {
-  try {
+  if (req.body.hardware) {
+    try {
 
-    const h = req.body.hardware;
+      const h = req.body.hardware;
 
-    console.log("Saving hardware:", id, h);
+      console.log("Saving hardware:", id, h);
 
-    await db.query(`
+      await db.query(`
       INSERT INTO device_hardware
       (device_id,disk,disk_free,cpu_temp,
        battery_health,battery_health_percent,
@@ -224,21 +258,21 @@ if (req.body.hardware) {
         fan_status=$7,
         updated_at=$8
     `,
-    [
-      id,
-      h.disk,
-      h.disk_free,
-      h.cpu_temp,
-      h.battery_health,
-      h.battery_health_percent,
-      h.fan_status,
-      Date.now()
-    ]);
+        [
+          id,
+          h.disk,
+          h.disk_free,
+          h.cpu_temp,
+          h.battery_health,
+          h.battery_health_percent,
+          h.fan_status,
+          Date.now()
+        ]);
 
-  } catch(err){
-    console.log("HARDWARE SAVE ERROR:", err);
+    } catch (err) {
+      console.log("HARDWARE SAVE ERROR:", err);
+    }
   }
-}
   async function attemptAutoHeal(id: string, alertType: string) {
 
     const rule = await db.query(
@@ -333,10 +367,19 @@ app.get("/devices/:id/compliance", async (req, res) => {
   res.send(r.rows[0] || {});
 });
 
-app.get("/devices/:id/hardware", async (req,res)=>{
+app.get("/devices/:id/hardware", async (req, res) => {
 
   const r = await db.query(
     "SELECT * FROM device_hardware WHERE device_id=$1",
+    [req.params.id]
+  );
+
+  res.send(r.rows[0] || {});
+});
+
+app.get("/devices/:id/updates", async (req, res) => {
+  const r = await db.query(
+    "SELECT * FROM device_updates WHERE device_id=$1",
     [req.params.id]
   );
 

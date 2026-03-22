@@ -143,6 +143,62 @@ Invoke-RestMethod `
 }
 
 # =====================================================
+#   Update Checks
+#======================================================
+function Get-UpdateHealth {
+
+    try {
+
+        Import-Module PSWindowsUpdate -ErrorAction SilentlyContinue
+
+        $updates = Get-WindowsUpdate -MicrosoftUpdate -IgnoreUserInput -ErrorAction SilentlyContinue
+
+        $pending = ($updates | Where-Object {$_.IsDownloaded -eq $false}).Count
+
+        $failed = (Get-WinEvent -LogName System -MaxEvents 50 |
+            Where-Object {$_.Message -like "*failed*update*"}).Count
+
+        if($pending -eq 0){
+            $winStatus="UP_TO_DATE"
+        }else{
+            $winStatus="PENDING"
+        }
+
+    } catch {
+        $winStatus="UNKNOWN"
+        $pending=0
+        $failed=0
+    }
+
+    # ================= DRIVER CHECK =================
+
+    try {
+
+        $drivers = Get-CimInstance Win32_PnPSignedDriver |
+            Where-Object {$_.DriverDate -lt (Get-Date).AddYears(-2)}
+
+        $outdated = $drivers.Count
+
+        if($outdated -gt 0){
+            $driverStatus="OUTDATED"
+        } else {
+            $driverStatus="HEALTHY"
+        }
+
+    } catch {
+        $driverStatus="UNKNOWN"
+        $outdated=0
+    }
+
+    return @{
+        windows_update_status = $winStatus
+        pending_updates = $pending
+        failed_updates = $failed
+        driver_status = $driverStatus
+        outdated_drivers = $outdated
+    }
+}
+# =====================================================
 # EXECUTE SCRIPT
 # =====================================================
 function Execute-Script($job){
@@ -310,6 +366,7 @@ $usage=Get-SystemUsage
 $top=Get-TopProcesses
 $compliance=Get-ComplianceStatus
 $hardware = Get-HardwareHealth
+$update = Get-UpdateHealth
 
 $payload=@{
  id=$device
@@ -319,8 +376,10 @@ $payload=@{
  processes=$top
  compliance=$compliance
  hardware = $hardware
+ updates = $update
  }
 
+ 
 
 $body=$payload|ConvertTo-Json -Depth 10
 
@@ -333,10 +392,11 @@ Invoke-RestMethod `
 Invoke-RemoteJob
 
 Write-Host "CPU:$($usage.cpu)% RAM:$($usage.ram)%"
+write-Host "update:$($update)"
 
 }catch{
 Write-Host "Agent Error: $_"
 }
 
-Start-Sleep 5
+Start-Sleep 3
 }

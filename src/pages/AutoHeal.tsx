@@ -121,12 +121,12 @@ export default function AutoHeal() {
         padding: 20,
         overflowY: "auto"
       }}>
-        <GlassCard>
+        
           <h2>Auto-Heal Timeline</h2>
           <h6 style={{ opacity: .6, marginTop: 5 }}>
             Shows all actions including approved, rejected and running ones.
           </h6>
-        </GlassCard>
+        
         <GlassCard style={{ marginTop: 20, marginBottom: 20 }}>
           <TimelineGroup title="🟡 Running" data={running} />
         </GlassCard>

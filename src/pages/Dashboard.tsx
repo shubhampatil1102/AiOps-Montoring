@@ -14,6 +14,15 @@ export default function Dashboard() {
         refetchInterval: 5000
     });
 
+    function getReason(d: any) {
+    if (Date.now() - d.time > 20000) return "Agent not reporting";
+    if (d.cpu > 90) return "CPU critically high";
+    if (d.ram > 90) return "Memory critically high";
+    if (d.cpu > 75) return "CPU elevated";
+    if (d.ram > 80) return "Memory elevated";
+    return "Healthy";
+  }
+
     const [, forceTick] = useState(0);
 
     useEffect(() => {
@@ -120,24 +129,38 @@ export default function Dashboard() {
                                     else if (d.cpu > 90 || d.ram > 90) { status = "Critical"; color = "#ef4444"; }
                                     else if (d.cpu > 70 || d.ram > 80) { status = "Warning"; color = "#f59e0b"; }
 
+                                    function setHover(arg0: boolean): void {
+                                        throw new Error("Function not implemented.");
+                                    }
+
                                     return (
                                         <tr key={d.id}>
                                             <td style={td}>{d.id}</td>
                                             <td style={td}><UsageBar value={d.cpu || 0} /></td>
                                             <td style={td}><UsageBar value={d.ram || 0} /></td>
-                                            <td style={td}>
+                                            <td style={td} title={getReason(d)}>
                                                 <span style={{
-                                                    padding: "4px 10px",
-                                                    borderRadius: 20,
-                                                    background: color + "30",
-                                                    color,
-                                                    fontWeight: 600,
+
+                                                    padding: "5px 8px",
+                                                     borderRadius: 20,
+                                                     background: color + "30",
+                                                     color,
+                                                     fontWeight: 700,
+                                                     cursor:"help",
                                                     fontSize: 12
-                                                }}>
+
+                                                    
+                                                    
+                                                }}
+                                                onMouseEnter={()=> setHover(true)}
+                                                onMouseLeave={()=> setHover(false)}
+                                                >
                                                     {status}
+                                                    
                                                 </span>
                                             </td>
-                                            <td style={td}>{hardware?.cpu_temp ? hardware.cpu_temp + " °C" : "--"}</td>
+                                            <td style={td}>{hardware?.cpu_temp ? hardware.cpu_temp + " °C" : "--"}
+                                            </td>
                                         </tr>
                                     );
                                 })}

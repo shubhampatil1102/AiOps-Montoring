@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+﻿import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchDevice, fetchDeviceHistory } from "@/api/devices";
@@ -67,6 +67,17 @@ export default function DeviceDetail() {
     },
     refetchInterval: 4000
   });
+
+  const {data: update} = useQuery({
+    queryKey: ["update",id],
+    queryFn: async () => {
+      const r = await fetch (`http:localhost:4000/devices/${id}/update`);
+      return r.json();
+    },
+    refetchInterval:4000
+  });
+
+  
 
 
   return (
@@ -190,7 +201,30 @@ export default function DeviceDetail() {
         </div>
 
       </GlassCard>
+      <GlassCard>
+        <h3 style={{marginBottom:5}}>System Updates & Drivers</h3>
 
+        <StatusRow
+          label="Windows Update"
+          value={update?.windows_update_status}
+        />
+
+        <StatusRow
+          label="Pending Updates"
+          value={update?.pending_updates}
+        />
+
+        <StatusRow
+          label="Driver Health"
+          value={update?.driver_status}
+        />
+
+        <StatusRow
+          label="Outdated Drivers"
+          value={update?.outdated_drivers}
+        />
+
+      </GlassCard>
 
       <div style={{ display: "flex", gap: 50, justifyContent: "space-between" }}>
 

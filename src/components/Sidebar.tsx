@@ -1,8 +1,7 @@
 import { NavLink } from "react-router-dom";
-import { useState } from "react";
+import { Dispatch, SetStateAction } from "react";
 import {
   LayoutDashboard,
-  Monitor,
   ShieldCheck,
   Wrench,
   ChevronLeft,
@@ -14,9 +13,12 @@ import {
   BotIcon
 } from "lucide-react";
 
-export default function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean;
+  setCollapsed: Dispatch<SetStateAction<boolean>>;
+}
 
-  const [collapsed, setCollapsed] = useState(false);
+export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
   const menu = [
     { name: "Dashboard", icon: LayoutDashboard, path: "/" },
