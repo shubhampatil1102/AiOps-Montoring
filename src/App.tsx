@@ -8,6 +8,7 @@ import Incidents from "./pages/Incidents";
 import Policies from "./pages/Policies";
 import Scripts from "@/pages/Scripts";
 import AutoHeal from "./pages/AutoHeal";
+import Remediation from "./pages/Remediation";
 import { Settings } from "lucide-react";
 
 
@@ -25,7 +26,7 @@ export default function App() {
           <Route path="policies" element={<Policies />} />
           <Route path="scripts" element={<Scripts />} />
           <Route path="auto-heal" element={<AutoHeal />} />
-          {/* <Route path="remediations" element={<Remediations />} /> */}
+          <Route path="remediations" element={<Remediation />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Route>
@@ -33,4 +34,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-

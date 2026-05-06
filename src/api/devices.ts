@@ -15,18 +15,24 @@ export const fetchDevices = async () => {
   }
 };
 
-
-export async function fetchDevice(id: string) {
-  const res = await fetch(`http://localhost:4000/devices/${id}`);
-  return res.json();
+async function safeFetchJson<T>(url: string, fallback: T): Promise<T> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error(`API request failed: ${url}`, res.status);
+      return fallback;
+    }
+    return (await res.json()) as T;
+  } catch (err) {
+    console.error(`API request error: ${url}`, err);
+    return fallback;
+  }
 }
 
-// export async function fetchDeviceHistory(id: string) {
-//   const res = await fetch(`http://localhost:4000/devices/${id}/history`);
-//   return res.json();
-// }
+export async function fetchDevice(id: string) {
+  return safeFetchJson(`http://localhost:4000/devices/${id}`, {} as any);
+}
 
 export async function fetchDeviceHistory(id: string, range: string) {
-  const res = await fetch(`http://localhost:4000/devices/${id}/history?range=${range}`);
-  return res.json();
+  return safeFetchJson(`http://localhost:4000/devices/${id}/history?range=${range}`, [] as any);
 }

@@ -3,7 +3,7 @@ Write-Host "===== AiOps Agent Starting ====="
 
 # =====================================================
 # ADMIN AUTO ELEVATION
-# =====================================================$identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+# =====================================================
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
 
@@ -198,6 +198,95 @@ function Get-UpdateHealth {
         outdated_drivers = $outdated
     }
 }
+
+function Get-SystemInventory {
+
+    # Services that should be running because they are Automatic but are stopped.
+    try {
+        $autoStoppedServices = Get-CimInstance Win32_Service |
+            Where-Object {
+                $_.StartMode -eq "Auto" -and
+                $_.State -ne "Running"
+            } |
+            Select-Object -First 25 |
+            ForEach-Object {
+                @{
+                    name = $_.Name
+                    display_name = $_.DisplayName
+                    start_mode = $_.StartMode
+                    state = $_.State
+                }
+            }
+    } catch {
+        $autoStoppedServices = @()
+    }
+
+    try {
+        $recentServiceFailures = Get-WinEvent -LogName System -MaxEvents 120 -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.ProviderName -eq "Service Control Manager" -and
+                ($_.LevelDisplayName -eq "Error" -or $_.LevelDisplayName -eq "Warning")
+            } |
+            Select-Object -First 15 |
+            ForEach-Object {
+                @{
+                    time = [int64]((Get-Date $_.TimeCreated).ToUniversalTime() - [datetime]'1970-01-01').TotalMilliseconds
+                    id = $_.Id
+                    message = $_.Message
+                }
+            }
+    } catch {
+        $recentServiceFailures = @()
+    }
+
+    try {
+        $problemDrivers = Get-CimInstance Win32_PnPEntity |
+            Where-Object { $_.ConfigManagerErrorCode -ne 0 } |
+            Select-Object -First 25 |
+            ForEach-Object {
+                @{
+                    name = $_.Name
+                    status = $_.Status
+                    error_code = $_.ConfigManagerErrorCode
+                    device_id = $_.DeviceID
+                }
+            }
+    } catch {
+        $problemDrivers = @()
+    }
+
+    try {
+        $outdatedDrivers = Get-CimInstance Win32_PnPSignedDriver |
+            Where-Object { $_.DriverDate -lt (Get-Date).AddYears(-2) } |
+            Sort-Object DriverDate |
+            Select-Object -First 25 |
+            ForEach-Object {
+                @{
+                    device_name = $_.DeviceName
+                    manufacturer = $_.Manufacturer
+                    version = $_.DriverVersion
+                    driver_date = if ($_.DriverDate) { (Get-Date $_.DriverDate).ToString("s") } else { "" }
+                }
+            }
+    } catch {
+        $outdatedDrivers = @()
+    }
+
+    return @{
+        services = @{
+            auto_running_issue_count = $autoStoppedServices.Count
+            recent_failure_count = $recentServiceFailures.Count
+            auto_stopped = $autoStoppedServices
+            recent_failures = $recentServiceFailures
+        }
+        drivers = @{
+            problem_count = $problemDrivers.Count
+            outdated_count = $outdatedDrivers.Count
+            problems = $problemDrivers
+            outdated = $outdatedDrivers
+        }
+    }
+}
 # =====================================================
 # EXECUTE SCRIPT
 # =====================================================
@@ -367,6 +456,7 @@ $top=Get-TopProcesses
 $compliance=Get-ComplianceStatus
 $hardware = Get-HardwareHealth
 $update = Get-UpdateHealth
+$inventory = Get-SystemInventory
 
 $payload=@{
  id=$device
@@ -377,6 +467,7 @@ $payload=@{
  compliance=$compliance
  hardware = $hardware
  updates = $update
+ inventory = $inventory
  }
 
  
@@ -392,7 +483,21 @@ Invoke-RestMethod `
 Invoke-RemoteJob
 
 Write-Host "CPU:$($usage.cpu)% RAM:$($usage.ram)%"
-write-Host "update:$($update)"
+Write-Host (
+    "Update: status={0} pending={1} failed={2} drivers={3} outdated={4}" -f
+    $update.windows_update_status,
+    $update.pending_updates,
+    $update.failed_updates,
+    $update.driver_status,
+    $update.outdated_drivers
+)
+Write-Host (
+    "Inventory: services_issues={0} service_failures={1} driver_problems={2} outdated_drivers={3}" -f
+    $inventory.services.auto_running_issue_count,
+    $inventory.services.recent_failure_count,
+    $inventory.drivers.problem_count,
+    $inventory.drivers.outdated_count
+)
 
 }catch{
 Write-Host "Agent Error: $_"

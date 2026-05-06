@@ -1,4 +1,4 @@
-import { useTheme } from "../themeContext";
+import { useTheme } from "../ThemeContext";
 
 export default function GlassCard({ children, style }: any) {
   const { theme } = useTheme();
@@ -14,7 +14,7 @@ export default function GlassCard({ children, style }: any) {
         borderRadius: 18,
         boxShadow: theme.cardShadow,
         padding: 18,
-        ...style
+        ...style,
       }}
     >
       {children}

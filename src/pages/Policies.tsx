@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import GlassCard from "../components/GlassCard";
+import Spinner from "../components/Spinner";
 
 export default function Policies() {
   const queryClient = useQueryClient();
@@ -47,7 +48,7 @@ export default function Policies() {
     },
   });
 
-  if (isLoading) return <div>Loading policy...</div>;
+  if (isLoading) return <Spinner label="Loading policy settings..." />;
 
   return (
     <div style={{ maxWidth: 500 }}>

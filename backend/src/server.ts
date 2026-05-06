@@ -20,6 +20,17 @@ async function createSuggestion(device_id: string, type: string, reason: string,
   return result.rows[0].id;
 }
 
+async function ensureInventoryTable() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS device_inventory (
+      device_id TEXT PRIMARY KEY,
+      services_summary JSONB,
+      drivers_summary JSONB,
+      updated_at BIGINT
+    )
+  `);
+}
+
 /* ---------------- HELPERS ---------------- */
 async function addEvent(id: string, type: string, message: string) {
   await db.query(
@@ -44,6 +55,7 @@ async function loadPolicy() {
   if (result.rows[0]) POLICY = result.rows[0];
 }
 loadPolicy();
+ensureInventoryTable().catch((err) => console.log("INVENTORY TABLE ERROR:", err));
 
 /* ---------------- ANOMALY ---------------- */
 async function checkCpuAnomaly(id: string, cpu: number) {
@@ -160,6 +172,32 @@ app.post("/metrics", async (req, res) => {
         u.outdated_drivers,
         Date.now()
       ]);
+  }
+
+  if (req.body.inventory) {
+    try {
+      const inventory = req.body.inventory;
+
+      await db.query(`
+        INSERT INTO device_inventory
+        (device_id, services_summary, drivers_summary, updated_at)
+        VALUES ($1, $2::jsonb, $3::jsonb, $4)
+        ON CONFLICT(device_id)
+        DO UPDATE SET
+          services_summary = $2::jsonb,
+          drivers_summary = $3::jsonb,
+          updated_at = $4
+      `,
+        [
+          id,
+          JSON.stringify(inventory.services || {}),
+          JSON.stringify(inventory.drivers || {}),
+          Date.now()
+        ]
+      );
+    } catch (err) {
+      console.log("INVENTORY SAVE ERROR:", err);
+    }
   }
 
   if (req.body.hardware) {
@@ -380,6 +418,15 @@ app.get("/devices/:id/hardware", async (req, res) => {
 app.get("/devices/:id/updates", async (req, res) => {
   const r = await db.query(
     "SELECT * FROM device_updates WHERE device_id=$1",
+    [req.params.id]
+  );
+
+  res.send(r.rows[0] || {});
+});
+
+app.get("/devices/:id/inventory", async (req, res) => {
+  const r = await db.query(
+    "SELECT * FROM device_inventory WHERE device_id=$1",
     [req.params.id]
   );
 

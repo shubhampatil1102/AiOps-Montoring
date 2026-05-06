@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchDevices } from "@/api/devices";
 import { useNavigate } from "react-router-dom";
 import GlassCard from "../components/GlassCard";
+import Spinner from "../components/Spinner";
 import { timeAgo } from "../utils/time";
 
 export default function Devices() {
@@ -34,7 +35,7 @@ export default function Devices() {
     refetchInterval: 5000,
   });
 
-  if (isLoading) return <h2 style={{ padding: 40 }}>Loading devices...</h2>;
+  if (isLoading) return <Spinner label="Loading devices..." />;
   if (isError) return <h2 style={{ padding: 40 }}>API Error</h2>;
 
   return (
@@ -47,7 +48,6 @@ export default function Devices() {
           background: "white",
           borderRadius: 10,
           borderCollapse: "collapse",
-
         }}>
 
           <thead>
