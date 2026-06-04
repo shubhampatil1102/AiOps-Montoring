@@ -1,5 +1,10 @@
-﻿$ErrorActionPreference = "Stop"
+﻿param(
+    [string]$BackendUrl = "http://localhost:4000"
+)
+
+$ErrorActionPreference = "Stop"
 Write-Host "===== AiOps Agent Starting ====="
+Write-Host "Backend URL: $BackendUrl"
 
 # =====================================================
 # ADMIN AUTO ELEVATION
@@ -130,7 +135,7 @@ function Ask-UserConsent($jobId,$process,$reason){
 function Send-Approval($jobId,$status,$message=""){
 
 Invoke-RestMethod `
- -Uri "http://localhost:4000/agent/job/approval" `
+ -Uri "$BackendUrl/agent/job/approval" `
  -Method Post `
  -Body (@{
         job_id=$jobId
@@ -328,7 +333,7 @@ function Invoke-RemoteJob {
 try{
 
 $job=Invoke-RestMethod `
- -Uri "http://localhost:4000/agent/job/$device"
+ -Uri "$BackendUrl/agent/job/$device"
 
 if(!$job.job_id){return}
 
@@ -337,7 +342,7 @@ Write-Host "Received Job $($job.job_id)"
 $result=Execute-Script $job
 
 Invoke-RestMethod `
- -Uri "http://localhost:4000/agent/job/result" `
+ -Uri "$BackendUrl/agent/job/result" `
  -Method Post `
  -Body (@{
     job_id=$job.job_id
@@ -475,7 +480,7 @@ $payload=@{
 $body=$payload|ConvertTo-Json -Depth 10
 
 Invoke-RestMethod `
- -Uri "http://localhost:4000/metrics" `
+ -Uri "$BackendUrl/metrics" `
  -Method Post `
  -Body $body `
  -ContentType "application/json"
@@ -503,5 +508,5 @@ Write-Host (
 Write-Host "Agent Error: $_"
 }
 
-Start-Sleep 3
+Start-Sleep 1
 }

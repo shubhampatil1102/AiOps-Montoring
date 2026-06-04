@@ -1,6 +1,8 @@
+import { API_URL } from './config';
+
 export async function fetchTopProcesses(id: string) {
   try {
-    const r = await fetch(`http://localhost:4000/devices/${id}/top-processes`);
+    const r = await fetch(`${API_URL}/devices/${id}/top-processes`);
     if (!r.ok) {
       console.error(`Top processes API failed for ${id}`, r.status);
       return [];

@@ -51,7 +51,7 @@ export default function Devices() {
         }}>
 
           <thead>
-            <tr style={{ background: "#f1f5f9" }}>
+            <tr style={{ background: "#f1f5f9"}}>
               <th style={th}>Device</th>
               <th style={th}>CPU</th>
               <th style={th}>RAM</th>
@@ -72,9 +72,9 @@ export default function Devices() {
                   onClick={() => navigate(`/devices/${d.id}`)}
                   style={{
                     cursor: "pointer",
-                    transition: "0.2s",
+                    transition: "0.5s",
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#e4f0fc")}
                   onMouseLeave={e => (e.currentTarget.style.background = "white")}
                 >
                   <td style={td}><div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -1,6 +1,7 @@
 ﻿import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { API_URL } from "@/api/config";
 import { fetchDevice, fetchDeviceHistory } from "@/api/devices";
 import { fetchTopProcesses } from "@/api/processes";
 import "./remediation.css";
@@ -17,12 +18,12 @@ import {
 import GlassCard from "../components/GlassCard";
 import { PuzzleIcon } from "lucide-react";
 
-const API = "http://localhost:4000";
+const API = API_URL;
 
 type Device = {
   id: string;
-  cpu?: number;
-  ram?: number;
+  cpu?: number | string;
+  ram?: number | string;
   time?: number;
 };
 
@@ -290,7 +291,7 @@ if (Get-Module -ListAvailable -Name PSWindowsUpdate) {
     });
   }
 
-  
+
 
 
   return (
@@ -322,8 +323,18 @@ if (Get-Module -ListAvailable -Name PSWindowsUpdate) {
         }}
       >
 
-        <Info title="CPU" value={`${device?.cpu?.toFixed(1) ?? 0}%`} />
-        <Info title="RAM" value={`${device?.ram?.toFixed(1) ?? 0}%`} />
+        {/* <Info title="CPU" value={`${device?.cpu?.toFixed(1) ?? 0}%`} />
+        <Info title="RAM" value={`${device?.ram?.toFixed(1) ?? 0}%`} /> */}
+
+        <Info
+          title="CPU"
+          value={`${Number(device?.cpu ?? 0).toFixed(1)}%`}
+        />
+
+        <Info
+          title="RAM"
+          value={`${Number(device?.ram ?? 0).toFixed(1)}%`}
+        />
         <Info
           title="Status"
           value={Date.now() - (device?.time ?? 0) < 20000 ? "ONLINE" : "OFFLINE"}
@@ -404,7 +415,7 @@ if (Get-Module -ListAvailable -Name PSWindowsUpdate) {
 
         <StatusRow label="CPU Temp"
           value={hardware?.cpu_temp}
-          displayValue={hardware?.cpu_temp !== undefined ? `${hardware.cpu_temp} °C` : "--"} />
+          displayValue={hardware?.cpu_temp !== undefined ? `${hardware.cpu_temp} "°C"` : "--"} />
 
         <StatusRow label="Disk Usage"
           value={hardware?.disk}
@@ -434,7 +445,7 @@ if (Get-Module -ListAvailable -Name PSWindowsUpdate) {
 
       </GlassCard>
       <GlassCard>
-        <h3 style={{marginBottom:5}}>System Updates & Drivers</h3>
+        <h3 style={{ marginBottom: 5 }}>System Updates & Drivers</h3>
 
         <StatusRow
           label="Windows Update"
@@ -534,7 +545,10 @@ if (Get-Module -ListAvailable -Name PSWindowsUpdate) {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
-            gap: 16
+            gap: 1,
+            fontSize: 12,
+
+
           }}
         >
           <IssueList
@@ -596,7 +610,8 @@ if (Get-Module -ListAvailable -Name PSWindowsUpdate) {
             {processes.map((p: any) => (
               <div key={p.name} style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>{p.name}</span>
-                <span>{p.cpu}%</span>
+                {/* <span>{p.cpu}%</span> */}
+                <span>{Number(p.cpu ?? 0).toFixed(1)}%</span>
               </div>
 
             ))}
@@ -895,16 +910,16 @@ function IssueList({
   return (
     <div
       style={{
-        background: "#fbfdff",
+        background: "#f7f9fa",
         border: "1px solid #e2e8f0",
         borderRadius: 14,
-        padding: 14,
+        padding: 11,
         minWidth: 0
       }}
     >
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>{title}</div>
 
-      <div style={{ maxHeight: 240, overflowY: "auto", display: "grid", gap: 10 }}>
+      <div style={{ maxHeight: 230, overflowY: "auto", display: "grid", gap: 10 }}>
         {items.length === 0 && (
           <div style={{ color: "#64748b", fontSize: 13 }}>{emptyText}</div>
         )}
@@ -913,12 +928,13 @@ function IssueList({
           <div
             key={`${item.primary}-${index}`}
             style={{
-              borderBottom: "1px solid #e5e7eb",
+              borderBottom: "1px solid #fcfdff",
+              boxShadow: "0 4px 12px rgba(105, 100, 100, 0.08)",
               paddingBottom: 10
             }}
           >
             <div style={{ fontWeight: 600, color: "#0f172a" }}>{item.primary}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 12, color: "#f90303", marginTop: 4, lineHeight: 1.4, opacity: 0.7 }}>
               {item.secondary}
             </div>
           </div>
@@ -927,4 +943,3 @@ function IssueList({
     </div>
   );
 }
-

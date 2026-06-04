@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import { API_URL } from "@/api/config";
 import GlassCard from "../components/GlassCard";
 import Spinner from "../components/Spinner";
 
@@ -10,7 +11,7 @@ export default function Policies() {
   const { data, isLoading } = useQuery({
     queryKey: ["policies"],
     queryFn: async () => {
-      const r = await fetch("http://localhost:4000/policies");
+      const r = await fetch(`${API_URL}/policies`);
       return r.json();
     },
   });
@@ -32,7 +33,7 @@ export default function Policies() {
   // save mutation
   const mutation = useMutation({
     mutationFn: async () => {
-      await fetch("http://localhost:4000/policies", {
+      await fetch(`${API_URL}/policies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

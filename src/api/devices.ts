@@ -1,6 +1,8 @@
+import { API_URL } from './config';
+
 export const fetchDevices = async () => {
   try {
-    const r = await fetch("http://localhost:4000/devices");
+    const r = await fetch(`${API_URL}/devices`);
 
     if (!r.ok) throw new Error("API failed");
 
@@ -30,9 +32,9 @@ async function safeFetchJson<T>(url: string, fallback: T): Promise<T> {
 }
 
 export async function fetchDevice(id: string) {
-  return safeFetchJson(`http://localhost:4000/devices/${id}`, {} as any);
+  return safeFetchJson(`${API_URL}/devices/${id}`, {} as any);
 }
 
 export async function fetchDeviceHistory(id: string, range: string) {
-  return safeFetchJson(`http://localhost:4000/devices/${id}/history?range=${range}`, [] as any);
+  return safeFetchJson(`${API_URL}/devices/${id}/history?range=${range}`, [] as any);
 }

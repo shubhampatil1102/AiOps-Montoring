@@ -250,6 +250,8 @@ export default function Scripts() {
                             padding: 14,
                             marginBottom: 12,
                             background: "linear-gradient(180deg,#ffffff,#f8fafc)"
+                            
+                            
                         }}>
 
 
@@ -261,6 +263,7 @@ export default function Scripts() {
                                 </div>
                                 <span style={statusBadge(j.status)}>
                                     {j.status}
+                                    
                                 </span>
                             </div>
 

@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Activity, Sparkles } from "lucide-react";
+import { API_URL } from "@/api/config";
 
 type Suggestion = {
   id: number;
@@ -28,7 +29,7 @@ export default function AutoHeal() {
   const { data: suggestions = [], refetch } = useQuery({
     queryKey: ["heal"],
     queryFn: async () => {
-      const r = await fetch("http://localhost:4000/heal/suggestions");
+      const r = await fetch(`${API_URL}/heal/suggestions`);
       return r.json();
     },
     refetchInterval: 4000
@@ -36,20 +37,20 @@ export default function AutoHeal() {
 
   const approve = useMutation({
     mutationFn: (id: number) =>
-      fetch(`http://localhost:4000/heal/approve/${id}`, { method: "POST" }),
+      fetch(`${API_URL}/heal/approve/${id}`, { method: "POST" }),
     onSuccess: () => refetch()
   });
 
   const reject = useMutation({
     mutationFn: (id: number) =>
-      fetch(`http://localhost:4000/heal/reject/${id}`, { method: "POST" }),
+      fetch(`${API_URL}/heal/reject/${id}`, { method: "POST" }),
     onSuccess: () => refetch()
   });
 
   const { data: timeline = [] } = useQuery({
     queryKey: ["heal-timeline"],
     queryFn: async () => {
-      const r = await fetch("http://localhost:4000/heal/timeline");
+      const r = await fetch(`${API_URL}/heal/timeline`);
       return r.json();
     },
     refetchInterval: 3000

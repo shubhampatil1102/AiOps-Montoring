@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import { db } from "./db";
-import { styleText } from "node:util";
 import { analyzeDeviceHealth } from "./ai/aiEngine";
 
 const app = express();
@@ -31,6 +30,88 @@ async function ensureInventoryTable() {
   `);
 }
 
+async function ensureRuntimeTables() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS script_library (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      script TEXT NOT NULL
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS heal_rules (
+      id SERIAL PRIMARY KEY,
+      alert_type TEXT NOT NULL,
+      script TEXT NOT NULL,
+      auto_enabled BOOLEAN DEFAULT FALSE
+    )
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS script_jobs (
+      id SERIAL PRIMARY KEY,
+      device_id TEXT NOT NULL,
+      script TEXT NOT NULL,
+      status TEXT DEFAULT 'PENDING',
+      timeout INTEGER DEFAULT 120,
+      output TEXT,
+      error TEXT,
+      approval_status TEXT,
+      approval_user TEXT,
+      agent_message TEXT,
+      created_at BIGINT NOT NULL,
+      started_at BIGINT,
+      finished_at BIGINT,
+      approved_at BIGINT,
+      rejected_at BIGINT
+    )
+  `);
+
+  await db.query(`
+    ALTER TABLE alerts
+    ADD COLUMN IF NOT EXISTS suggestion_id INTEGER
+  `);
+  await db.query(`
+    ALTER TABLE alerts
+    ADD COLUMN IF NOT EXISTS auto_healed BOOLEAN DEFAULT FALSE
+  `);
+  await db.query(`
+    ALTER TABLE heal_suggestions
+    ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'PENDING'
+  `);
+  await db.query(`
+    ALTER TABLE device_hardware
+    ADD COLUMN IF NOT EXISTS health_score INTEGER
+  `);
+  await db.query(`
+    ALTER TABLE device_hardware
+    ADD COLUMN IF NOT EXISTS risk TEXT
+  `);
+}
+
+function parseIssueKey(issueKey: string) {
+  const prefix = "ALERT-";
+  if (!issueKey.startsWith(prefix)) {
+    return null;
+  }
+
+  const lastDash = issueKey.lastIndexOf("-");
+  if (lastDash <= prefix.length) {
+    return null;
+  }
+
+  const alertId = issueKey.slice(prefix.length, lastDash);
+  const alertTime = issueKey.slice(lastDash + 1);
+
+  if (!alertId || !alertTime) {
+    return null;
+  }
+
+  return { alertId, alertTime };
+}
+
 /* ---------------- HELPERS ---------------- */
 async function addEvent(id: string, type: string, message: string) {
   await db.query(
@@ -40,8 +121,7 @@ async function addEvent(id: string, type: string, message: string) {
 }
 
 /* ---------------- STATE TIMERS ---------------- */
-const IDLE_AFTER = 60 * 1000;       // 1 min
-const LOST_AFTER = 5 * 60 * 1000;   // 5 min
+const IDLE_AFTER = 60 * 1000; // 1 min
 
 /* ---------------- POLICY CACHE ---------------- */
 let POLICY = {
@@ -56,6 +136,7 @@ async function loadPolicy() {
 }
 loadPolicy();
 ensureInventoryTable().catch((err) => console.log("INVENTORY TABLE ERROR:", err));
+ensureRuntimeTables().catch((err) => console.log("RUNTIME TABLE ERROR:", err));
 
 /* ---------------- ANOMALY ---------------- */
 async function checkCpuAnomaly(id: string, cpu: number) {
@@ -208,7 +289,7 @@ app.post("/metrics", async (req, res) => {
       100
       - (h.cpu_temp > 80 ? 25 : 0)
       - (h.disk > 90 ? 25 : 0)
-      - (h.battery < 20 ? 20 : 0);
+      - (h.battery_health_percent < 20 ? 20 : 0);
 
     const risk =
       score > 80 ? "LOW" :
@@ -218,40 +299,37 @@ app.post("/metrics", async (req, res) => {
     await db.query(`
     INSERT INTO device_hardware(
       device_id,
-      cpu_usage,
-      ram_usage,
       disk,
       disk_free,
       cpu_temp,
-      battery,
+      battery_health,
+      battery_health_percent,
       fan_status,
       health_score,
       risk,
       updated_at
     )
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 
     ON CONFLICT(device_id)
     DO UPDATE SET
-      cpu_usage=$2,
-      ram_usage=$3,
-      disk=$4,
-      disk_free=$5,
-      cpu_temp=$6,
-      battery=$7,
-      fan_status=$8,
-      health_score=$9,
-      risk=$10,
-      updated_at=$11
+      disk=$2,
+      disk_free=$3,
+      cpu_temp=$4,
+      battery_health=$5,
+      battery_health_percent=$6,
+      fan_status=$7,
+      health_score=$8,
+      risk=$9,
+      updated_at=$10
   `,
       [
         id,
-        cpu,
-        ram,
         h.disk,
         h.disk_free,
         h.cpu_temp,
-        h.battery,
+        h.battery_health,
+        h.battery_health_percent,
         h.fan_status,
         score,
         risk,
@@ -271,46 +349,6 @@ app.post("/metrics", async (req, res) => {
     );
   }
 
-  /* ================= HARDWARE SAVE ================= */
-
-  if (req.body.hardware) {
-    try {
-
-      const h = req.body.hardware;
-
-      console.log("Saving hardware:", id, h);
-
-      await db.query(`
-      INSERT INTO device_hardware
-      (device_id,disk,disk_free,cpu_temp,
-       battery_health,battery_health_percent,
-       fan_status,updated_at)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8)
-      ON CONFLICT(device_id)
-      DO UPDATE SET
-        disk=$2,
-        disk_free=$3,
-        cpu_temp=$4,
-        battery_health=$5,
-        battery_health_percent=$6,
-        fan_status=$7,
-        updated_at=$8
-    `,
-        [
-          id,
-          h.disk,
-          h.disk_free,
-          h.cpu_temp,
-          h.battery_health,
-          h.battery_health_percent,
-          h.fan_status,
-          Date.now()
-        ]);
-
-    } catch (err) {
-      console.log("HARDWARE SAVE ERROR:", err);
-    }
-  }
   async function attemptAutoHeal(id: string, alertType: string) {
 
     const rule = await db.query(
@@ -397,12 +435,97 @@ app.get("/devices", async (_, res) => {
   const result = await db.query("SELECT * FROM devices");
   res.send(result.rows);
 });
+
+app.get("/devices/hardware", async (req, res) => {
+  const idsParam = String(req.query.ids || "").trim();
+  if (!idsParam) {
+    return res.send({});
+  }
+
+  const ids = idsParam
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+  if (!ids.length) {
+    return res.send({});
+  }
+
+  const result = await db.query(
+    `SELECT *
+     FROM device_hardware
+     WHERE device_id = ANY($1::text[])`,
+    [ids]
+  );
+
+  const hardwareByDevice = result.rows.reduce((acc, row) => {
+    acc[row.device_id] = row;
+    return acc;
+  }, {} as Record<string, unknown>);
+
+  res.send(hardwareByDevice);
+});
+
 app.get("/devices/:id/compliance", async (req, res) => {
   const r = await db.query(
     "SELECT * FROM device_compliance WHERE device_id=$1",
     [req.params.id]
   );
   res.send(r.rows[0] || {});
+});
+
+
+/* ---------------- POLICIES ---------------- */
+app.get("/policies", async (_, res) => {
+  const result = await db.query(
+    `SELECT cpu_threshold, ram_threshold, offline_seconds
+     FROM policies
+     ORDER BY id ASC
+     LIMIT 1`
+  );
+
+  res.send(result.rows[0] || POLICY);
+});
+
+app.post("/policies", async (req, res) => {
+  const cpuThreshold = Number(req.body?.cpu_threshold);
+  const ramThreshold = Number(req.body?.ram_threshold);
+  const offlineSeconds = Number(req.body?.offline_seconds);
+
+  if (
+    !Number.isFinite(cpuThreshold) ||
+    !Number.isFinite(ramThreshold) ||
+    !Number.isFinite(offlineSeconds)
+  ) {
+    return res.status(400).send({ error: "Invalid policy payload" });
+  }
+
+  const existing = await db.query("SELECT id FROM policies ORDER BY id ASC LIMIT 1");
+
+  if (existing.rows[0]) {
+    await db.query(
+      `UPDATE policies
+       SET cpu_threshold=$1,
+           ram_threshold=$2,
+           offline_seconds=$3
+       WHERE id=$4`,
+      [cpuThreshold, ramThreshold, offlineSeconds, existing.rows[0].id]
+    );
+  } else {
+    await db.query(
+      `INSERT INTO policies(cpu_threshold, ram_threshold, offline_seconds, created_at)
+       VALUES($1,$2,$3,$4)`,
+      [cpuThreshold, ramThreshold, offlineSeconds, Date.now()]
+    );
+  }
+
+  POLICY = {
+    cpu_threshold: cpuThreshold,
+    ram_threshold: ramThreshold,
+    offline_seconds: offlineSeconds,
+  };
+
+  res.send({ ok: true, policy: POLICY });
 });
 
 app.get("/devices/:id/hardware", async (req, res) => {
@@ -617,17 +740,19 @@ app.get("/devices/:id/top-processes", async (req, res) => {
 /* ---------------- SMART PRESENCE ---------------- */
 setInterval(async () => {
   const now = Date.now();
+  const lostAfter = Math.max(1000, Number(POLICY.offline_seconds || 20) * 1000);
+  const idleAfter = Math.min(IDLE_AFTER, lostAfter);
   const result = await db.query("SELECT * FROM devices");
 
   for (const d of result.rows) {
     const diff = now - Number(d.last_seen);
 
-    if (diff < IDLE_AFTER) {
+    if (diff < idleAfter) {
       await db.query("UPDATE devices SET state='ONLINE' WHERE id=$1", [d.id]);
       continue;
     }
 
-    if (diff < LOST_AFTER) {
+    if (diff < lostAfter) {
       await db.query("UPDATE devices SET state='IDLE' WHERE id=$1", [d.id]);
       continue;
     }
@@ -857,6 +982,126 @@ app.get("/heal/timeline", async (_, res) => {
   res.send(result.rows);
 });
 
+/* ---------------- ISSUES (transform alerts to issues format) ---------------- */
+app.get("/issues", async (req, res) => {
+  console.log("GET /issues called");
+  try {
+    const result = await db.query(
+      `SELECT * FROM alerts ORDER BY time DESC LIMIT 100`
+    );
+
+    console.log("Found", result.rows.length, "alerts");
+
+    const issues = result.rows.map((alert) => {
+      let type = "other";
+      let severity = "medium";
+      
+      if (alert.message.toLowerCase().includes("cpu")) {
+        type = "performance";
+        severity = alert.message.includes("anomaly") ? "high" : "medium";
+      } else if (alert.message.toLowerCase().includes("ram")) {
+        type = "performance";
+        severity = "medium";
+      } else if (alert.message.toLowerCase().includes("security")) {
+        type = "security";
+        severity = "critical";
+      } else if (alert.message.toLowerCase().includes("update")) {
+        type = "update";
+        severity = "low";
+      } else if (alert.message.toLowerCase().includes("service")) {
+        type = "service";
+        severity = "high";
+      } else if (alert.message.toLowerCase().includes("driver")) {
+        type = "driver";
+        severity = "medium";
+      }
+
+      let status = "open";
+      if (alert.resolved) {
+        status = "resolved";
+      } else if (alert.acknowledged) {
+        status = "in-progress";
+      } else if (alert.auto_healed) {
+        status = "pending";
+      }
+
+      return {
+        id: `ALERT-${alert.id}-${alert.time}`,
+        title: alert.message,
+        description: alert.message,
+        type,
+        severity,
+        status,
+        device_id: alert.id,
+        created_at: alert.time,
+        updated_at: alert.time,
+        action_required: !alert.resolved && !alert.acknowledged,
+        auto_remediation_available: !!alert.suggestion_id || alert.auto_healed
+      };
+    });
+
+    console.log("Sending", issues.length, "issues");
+    res.send(issues);
+  } catch (err) {
+    console.error("ISSUES FETCH ERROR:", err);
+    res.status(500).send({ error: "Failed to fetch issues" });
+  }
+});
+
+app.post("/issues/:id/resolve", async (req, res) => {
+  try {
+    const parsed = parseIssueKey(req.params.id);
+    if (!parsed) {
+      return res.status(400).send({ error: "Invalid issue id" });
+    }
+    
+    await db.query(
+      "UPDATE alerts SET resolved=true WHERE id=$1 AND time=$2",
+      [parsed.alertId, parsed.alertTime]
+    );
+    res.send({ ok: true });
+  } catch (err) {
+    console.error("RESOLVE ERROR:", err);
+    res.status(500).send({ error: "Failed to resolve issue" });
+  }
+});
+
+app.post("/issues/:id/escalate", async (req, res) => {
+  try {
+    const parsed = parseIssueKey(req.params.id);
+    if (!parsed) {
+      return res.status(400).send({ error: "Invalid issue id" });
+    }
+    
+    await db.query(
+      "UPDATE alerts SET acknowledged=true WHERE id=$1 AND time=$2",
+      [parsed.alertId, parsed.alertTime]
+    );
+    res.send({ ok: true });
+  } catch (err) {
+    console.error("ESCALATE ERROR:", err);
+    res.status(500).send({ error: "Failed to escalate issue" });
+  }
+});
+
+app.post("/issues/:id/remediate", async (req, res) => {
+  try {
+    const parsed = parseIssueKey(req.params.id);
+    if (!parsed) {
+      return res.status(400).send({ error: "Invalid issue id" });
+    }
+    
+    // Trigger auto-healing
+    await db.query(
+      "UPDATE alerts SET auto_healed=true WHERE id=$1 AND time=$2",
+      [parsed.alertId, parsed.alertTime]
+    );
+    res.send({ ok: true });
+  } catch (err) {
+    console.error("REMEDIATE ERROR:", err);
+    res.status(500).send({ error: "Failed to remediate issue" });
+  }
+});
 
 /* ---------------- START ---------------- */
 app.listen(4000, () =>

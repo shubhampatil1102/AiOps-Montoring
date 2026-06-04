@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { API_URL } from "@/api/config";
 import GlassCard from "@/components/GlassCard";
 import { fetchAlerts } from "@/api/alerts";
 import { fetchDevices } from "@/api/devices";
@@ -64,7 +65,7 @@ type RemediationRecord = {
   device?: Device;
 };
 
-const API = "http://localhost:4000";
+const API = API_URL;
 
 export default function Remediation() {
   const navigate = useNavigate();

@@ -1,4 +1,6 @@
-const API = "http://localhost:4000";
+import { API_URL } from './config';
+
+const API = API_URL;
 
 // export async function runScript(device: string, script: string) {
 //   const r = await fetch(`${API}/scripts/run`, {
@@ -17,7 +19,7 @@ const API = "http://localhost:4000";
     return;
   }
 
-  await fetch("http://localhost:4000/scripts/run", {
+  await fetch(`${API_URL}/scripts/run`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -35,12 +37,12 @@ export async function fetchJobs() {
 }
 
 export async function fetchLibrary() {
-  const r = await fetch("http://localhost:4000/scripts/library");
+  const r = await fetch(`${API_URL}/scripts/library`);
   return r.json();
 }
 
 export async function runLibrary(device:string,script_id:number){
-  const r = await fetch("http://localhost:4000/scripts/run-library",{
+  const r = await fetch(`${API_URL}/scripts/run-library`,{
     method:"POST",
     headers:{ "Content-Type":"application/json"},
     body:JSON.stringify({device,script_id})
@@ -49,6 +51,6 @@ export async function runLibrary(device:string,script_id:number){
 }
 
 export async function fetchApprovals(){
-  const r = await fetch("http://localhost:4000/scripts/approvals");
+  const r = await fetch(`${API_URL}/scripts/approvals`);
   return r.json();
 }
