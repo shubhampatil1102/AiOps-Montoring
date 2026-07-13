@@ -1,34 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeDeviceHealth = analyzeDeviceHealth;
-async function analyzeDeviceHealth(device) {
-    const issues = [];
-    /* CPU Intelligence */
-    if (device.cpu > 85) {
-        issues.push({
-            type: "CPU_RISK",
-            severity: "HIGH",
-            reason: `CPU constantly ${device.cpu}%`,
-            action: "Kill high CPU process"
-        });
-    }
-    /* RAM Intelligence */
-    if (device.ram > 90) {
-        issues.push({
-            type: "MEMORY_LEAK",
-            severity: "HIGH",
-            reason: "Possible memory leak",
-            action: "Restart heavy service"
-        });
-    }
-    /* Security Compliance AI */
-    if (device.compliance?.bitlocker !== "ENABLED") {
-        issues.push({
-            type: "SECURITY",
-            severity: "CRITICAL",
-            reason: "Bitlocker disabled",
-            action: "Enable Bitlocker"
-        });
-    }
-    return issues;
-}
+exports.analyzeDeviceHealth = void 0;
+var ai_service_1 = require("../services/ai.service");
+Object.defineProperty(exports, "analyzeDeviceHealth", { enumerable: true, get: function () { return ai_service_1.analyzeDeviceHealth; } });

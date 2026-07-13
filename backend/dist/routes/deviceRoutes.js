@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const deviceController_1 = require("../controllers/deviceController");
+const processController_1 = require("../controllers/processController");
+const router = (0, express_1.Router)();
+router.get("/devices", deviceController_1.getDevices);
+router.get("/devices/hardware", deviceController_1.getDevicesHardware);
+router.get("/devices/:id/compliance", deviceController_1.getDeviceCompliance);
+router.get("/devices/:id/hardware", deviceController_1.getDeviceHardware);
+router.get("/devices/:id/updates", deviceController_1.getDeviceUpdates);
+router.get("/devices/:id/inventory", deviceController_1.getDeviceInventory);
+router.get("/devices/:id/history", deviceController_1.getDeviceHistory);
+router.get("/devices/:id/events", deviceController_1.getDeviceEvents);
+router.get("/devices/:id/top-processes", processController_1.getTopProcesses);
+router.get("/devices/:id", deviceController_1.getDevice);
+exports.default = router;

@@ -1,8 +1,9 @@
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { runScript, fetchJobs, fetchLibrary, runLibrary, fetchApprovals } from "@/api/scripts";
 import { fetchDevices } from "@/api/devices";
 import GlassCard from "../components/GlassCard";
+import { SuperscriptIcon } from "lucide-react";
 
 type ScriptLibrary = {
     id: number;
@@ -148,7 +149,7 @@ export default function Scripts() {
     return (
         <div style={{ padding: 25, display: "grid", gap: 20 }}>
 
-            <h1 style={{ fontSize: 28 }}>Remote Scripts</h1>
+            <h1 style={{ fontSize: 28 }}>Remote Scripts </h1>
 
             {/* RUN CUSTOM SCRIPT */}
             <GlassCard>
@@ -173,7 +174,7 @@ export default function Scripts() {
                     style={btn}
                     disabled={!device || !script || activeJob !== null}
                 >
-                    {activeJob ? "Running..." : "Run Script"}
+                    {activeJob ? "Running..." : "Run Script"} 
                 </button>
             </GlassCard>
 
@@ -237,7 +238,7 @@ export default function Scripts() {
 
             {/* ACTIVE EXECUTIONS */}
             <div style={card}>
-                <h2 style={{ marginBottom: 12 }}>🟡 Active Executions</h2>
+                <h3 style={{ marginBottom: 12 }}>🟡 Active Executions</h3>
 
                 {jobs.filter((j: any) => j.status === "RUNNING" || j.status === "PENDING").length === 0 && (
                     <div style={{ opacity: .6 }}>No active scripts running</div>
@@ -250,8 +251,8 @@ export default function Scripts() {
                             padding: 14,
                             marginBottom: 12,
                             background: "linear-gradient(180deg,#ffffff,#f8fafc)"
-                            
-                            
+
+
                         }}>
 
 
@@ -263,7 +264,7 @@ export default function Scripts() {
                                 </div>
                                 <span style={statusBadge(j.status)}>
                                     {j.status}
-                                    
+
                                 </span>
                             </div>
 
@@ -299,7 +300,7 @@ export default function Scripts() {
                             <div key={j.id} className="panel" style={{
                                 padding: 14,
                                 marginBottom: 12,
-                                background: "linear-gradient(180deg,#ffffff,#f8fafc)"
+                                background: "linear-gradient(190deg,#ffffff,#f8fafc)"
                             }}>
 
 
@@ -356,8 +357,8 @@ export default function Scripts() {
             {/* APPROVAL TIMELINE */}
             <div style={card}>
                 <h3>Approval Timeline</h3>
-                <div style={{display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:15}}>
-                    
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 15 }}>
+
                     <button style={btn}>ASC</button>
                     <button style={btn}>DESC</button>
                     <button style={btn}>Clear</button>
@@ -378,7 +379,7 @@ export default function Scripts() {
                             <div style={{ display: "flex", justifyContent: "space-between" }}>
                                 <b>Job #{a.job_id}</b>
 
-                        
+
 
                                 <span style={{
                                     color:
@@ -391,14 +392,14 @@ export default function Scripts() {
                             </div>
 
                             <div style={{ fontSize: 13, marginTop: 3 }}>
-                                User: <b>{a.approval_user}</b> 
+                                User: <b>{a.approval_user}</b>
                                 <div>
                                     Script : <b>{a.script}</b>
                                 </div>
                                 <div>
                                     Output : <b>{a.output || "No output"}</b>
                                 </div>
-                                
+
                             </div>
 
                             {a.message && (

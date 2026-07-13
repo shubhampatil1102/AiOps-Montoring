@@ -30,11 +30,39 @@ if (-not $adminCheck) {
 $device = $env:COMPUTERNAME.Trim().ToUpper()
 
 # =====================================================
+# COLLECTION SCHEDULER
+# =====================================================
+$COLLECT_USAGE_SECONDS = 5
+$COLLECT_PROCESSES_SECONDS = 10
+$COLLECT_HARDWARE_SECONDS = 60
+$COLLECT_INVENTORY_SECONDS = 300
+$COLLECT_COMPLIANCE_SECONDS = 900
+$COLLECT_UPDATES_SECONDS = 1800
+
+$lastUsageCollection = 0
+$lastProcessCollection = 0
+$lastHardwareCollection = 0
+$lastInventoryCollection = 0
+$lastComplianceCollection = 0
+$lastUpdateCollection = 0
+
+$usageCache = $null
+$topCache = @()
+$hardwareCache = $null
+$inventoryCache = $null
+$complianceCache = $null
+$updateCache = $null
+
+# =====================================================
 # TIME HELPER
 # =====================================================
 function NowMillis {
     return [int64]((Get-Date).ToUniversalTime() -
         [datetime]'1970-01-01').TotalMilliseconds
+}
+
+function Should-Collect($lastRun, $intervalSeconds) {
+    return ((NowMillis) - [int64]$lastRun) -ge ([int64]$intervalSeconds * 1000)
 }
 
 # =====================================================
@@ -456,23 +484,51 @@ while($true){
 
 try{
 
-$usage=Get-SystemUsage
-$top=Get-TopProcesses
-$compliance=Get-ComplianceStatus
-$hardware = Get-HardwareHealth
-$update = Get-UpdateHealth
-$inventory = Get-SystemInventory
+$metricsDue = $false
+
+if($null -eq $usageCache -or (Should-Collect $lastUsageCollection $COLLECT_USAGE_SECONDS)){
+    $usageCache=Get-SystemUsage
+    $lastUsageCollection=NowMillis
+    $metricsDue = $true
+}
+
+if($null -eq $topCache -or (Should-Collect $lastProcessCollection $COLLECT_PROCESSES_SECONDS)){
+    $topCache=Get-TopProcesses
+    $lastProcessCollection=NowMillis
+}
+
+if($null -eq $complianceCache -or (Should-Collect $lastComplianceCollection $COLLECT_COMPLIANCE_SECONDS)){
+    $complianceCache=Get-ComplianceStatus
+    $lastComplianceCollection=NowMillis
+}
+
+if($null -eq $hardwareCache -or (Should-Collect $lastHardwareCollection $COLLECT_HARDWARE_SECONDS)){
+    $hardwareCache=Get-HardwareHealth
+    $lastHardwareCollection=NowMillis
+}
+
+if($null -eq $updateCache -or (Should-Collect $lastUpdateCollection $COLLECT_UPDATES_SECONDS)){
+    $updateCache=Get-UpdateHealth
+    $lastUpdateCollection=NowMillis
+}
+
+if($null -eq $inventoryCache -or (Should-Collect $lastInventoryCollection $COLLECT_INVENTORY_SECONDS)){
+    $inventoryCache=Get-SystemInventory
+    $lastInventoryCollection=NowMillis
+}
+
+if($metricsDue){
 
 $payload=@{
  id=$device
- cpu=$usage.cpu
- ram=$usage.ram
- boot_time=$usage.boot
- processes=$top
- compliance=$compliance
- hardware = $hardware
- updates = $update
- inventory = $inventory
+ cpu=$usageCache.cpu
+ ram=$usageCache.ram
+ boot_time=$usageCache.boot
+ processes=$topCache
+ compliance=$complianceCache
+ hardware = $hardwareCache
+ updates = $updateCache
+ inventory = $inventoryCache
  }
 
  
@@ -484,25 +540,28 @@ Invoke-RestMethod `
  -Method Post `
  -Body $body `
  -ContentType "application/json"
+}
 
 Invoke-RemoteJob
 
-Write-Host "CPU:$($usage.cpu)% RAM:$($usage.ram)%"
+if($metricsDue){
+Write-Host "CPU:$($usageCache.cpu)% RAM:$($usageCache.ram)%"
 Write-Host (
     "Update: status={0} pending={1} failed={2} drivers={3} outdated={4}" -f
-    $update.windows_update_status,
-    $update.pending_updates,
-    $update.failed_updates,
-    $update.driver_status,
-    $update.outdated_drivers
+    $updateCache.windows_update_status,
+    $updateCache.pending_updates,
+    $updateCache.failed_updates,
+    $updateCache.driver_status,
+    $updateCache.outdated_drivers
 )
 Write-Host (
     "Inventory: services_issues={0} service_failures={1} driver_problems={2} outdated_drivers={3}" -f
-    $inventory.services.auto_running_issue_count,
-    $inventory.services.recent_failure_count,
-    $inventory.drivers.problem_count,
-    $inventory.drivers.outdated_count
+    $inventoryCache.services.auto_running_issue_count,
+    $inventoryCache.services.recent_failure_count,
+    $inventoryCache.drivers.problem_count,
+    $inventoryCache.drivers.outdated_count
 )
+}
 
 }catch{
 Write-Host "Agent Error: $_"

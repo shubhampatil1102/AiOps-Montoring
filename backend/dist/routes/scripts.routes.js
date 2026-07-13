@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const scripts_controller_1 = require("../controllers/scripts.controller");
+const router = (0, express_1.Router)();
+router.get("/scripts/library", scripts_controller_1.getScriptLibrary);
+router.post("/scripts/run-library", scripts_controller_1.runLibraryScript);
+router.post("/scripts/run", scripts_controller_1.runScript);
+router.get("/scripts/jobs", scripts_controller_1.getScriptJobs);
+router.get("/scripts/approvals", scripts_controller_1.getScriptApprovals);
+router.get("/agent/job/:deviceId", scripts_controller_1.pullAgentJob);
+router.post("/agent/job/log", scripts_controller_1.appendAgentJobLog);
+router.post("/agent/job/result", scripts_controller_1.saveAgentJobResult);
+router.post("/agent/job/approval", scripts_controller_1.saveAgentApproval);
+exports.default = router;
