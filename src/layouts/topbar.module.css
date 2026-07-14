@@ -1,0 +1,158 @@
+.topbar {
+  height: 72px;
+  background: white;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 0 32px;
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  width: 420px;
+
+  background: #f8fafc;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 12px;
+
+  padding: 10px 16px;
+}
+
+.searchInput {
+  flex: 1;
+
+  border: none;
+
+  outline: none;
+
+  background: transparent;
+
+  font-size: 15px;
+}
+
+.right {
+  display: flex;
+
+  align-items: center;
+
+  gap: 20px;
+}
+
+.dateButton {
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 10px 18px;
+
+  background: white;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 10px;
+
+  cursor: pointer;
+
+  font-size: 14px;
+}
+
+.notification {
+  position: relative;
+
+  border: none;
+
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.badge {
+  position: absolute;
+
+  top: -6px;
+
+  right: -6px;
+
+  background: #2563eb;
+
+  color: white;
+
+  width: 18px;
+
+  height: 18px;
+
+  border-radius: 50%;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  font-size: 11px;
+}
+
+.user {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  cursor: pointer;
+}
+
+.avatar {
+  width: 42px;
+
+  height: 42px;
+
+  border-radius: 50%;
+
+  background: #2563eb;
+
+  color: white;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  font-weight: 700;
+}
+
+.userInfo {
+  display: flex;
+
+  flex-direction: column;
+}
+
+.name {
+  font-weight: 600;
+
+  font-size: 14px;
+}
+
+.role {
+  font-size: 12px;
+
+  color: #64748b;
+}
