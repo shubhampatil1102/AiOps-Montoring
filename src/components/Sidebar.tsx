@@ -1,18 +1,27 @@
+/**
+ * Sidebar Component
+ *
+ * Responsibilities:
+ * - Render application navigation
+ * - Handle collapse/expand state
+ * - Display branding
+ *
+ * Does NOT:
+ * - Contain routing logic
+ * - Define navigation items
+ * - Perform API calls
+ *
+ * Navigation configuration:
+ * src/constants/navigation.ts
+ */
 import { NavLink } from "react-router-dom";
 import { Dispatch, SetStateAction } from "react";
 import { sidebarNavigation } from "../constants/navigation";
 import {
-  LayoutDashboard,
-  ShieldCheck,
-  Wrench,
   ChevronLeft,
-  ChevronRight,
-  LaptopIcon,
-  CpuIcon,
-  LockIcon,
-  SuperscriptIcon,
-  BotIcon
+  ChevronRight
 } from "lucide-react";
+import { sidebarColors } from "../themes/colors";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -20,27 +29,23 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
-
-  // const menu = [
-  //   { name: "Dashboard", icon: LayoutDashboard, path: "/" },
-  //   { name: "Devices", icon: LaptopIcon, path: "/devices" },
-  //   { name: "Auto Heal", icon: Wrench, path: "/auto-heal" },
-  //   { name: "Incidents", icon: CpuIcon, path: "/incidents" },
-  //   { name: "Policies", icon: LockIcon, path: "/policies" },
-  //   {name: "Scripts", icon: SuperscriptIcon, path: "/scripts" },
-  //   { name: "Remediations", icon: BotIcon, path: "/remediations" },
-  //   { name: "Security", icon: ShieldCheck, path: "/security" },
-  // ];
-
+  /*
+   * TODO (Sprint 3):
+   * Move collapse button into the Sidebar footer.
+   * Remove absolute positioning once the final AppLayout
+   * and Topbar are implemented.
+   */
+  const SIDEBAR_WIDTH = 240;
+  const SIDEBAR_COLLAPSED_WIDTH = 70;
   return (
 
     <div
       style={{
-        width: collapsed ? 70 : 240,
+        width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
         transition: "all 0.35s ease",
-        height: "140vh",
-        background: "#0f172a",
-        color: "white",
+        height: "100dvh",
+        background: sidebarColors.background,
+        color: sidebarColors.text,
         display: "flex",
         flexDirection: "column",
         position: "relative",
@@ -48,7 +53,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       }}
     >
 
-      {/* ===== HEADER ===== */}
+      {/* ===== Logo ===== */}
       <div style={{
         padding: 20,
         fontWeight: 700,
@@ -58,7 +63,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         {collapsed ? "AI" : "AiOps Console"}
       </div>
 
-      {/* ===== MENU ===== */}
+      {/* ===== Navigation ===== */}
       <div style={{ flex: 1 }}>
 
         {sidebarNavigation.map((m, i) => {
@@ -75,12 +80,12 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 gap: 14,
                 padding: "14px 18px",
                 textDecoration: "none",
-                color: "white",
+                color: sidebarColors.text,
                 margin: "6px 10px",
                 borderRadius: 10,
                 transition: "all .25s",
                 background: isActive
-                  ? "linear-gradient(90deg,#2563eb,#1d4ed8)"
+                  ? `linear-gradient(90deg, ${sidebarColors.activeStart}, ${sidebarColors.activeEnd})`
                   : "transparent",
                 boxShadow: isActive
                   ? "0 0 15px rgba(37,99,235,.6)"
@@ -103,21 +108,23 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         })}
       </div>
 
-      {/* ===== COLLAPSE BUTTON ===== */}
+      {/* ===== Footer ===== */}
+
+      {/* Collapse Toggle */}
       <div
         onClick={() => setCollapsed(!collapsed)}
         style={{
           position: "absolute",
           right: -12,
           top: 30,
-          background: "#1e293b",
+          background: sidebarColors.background,
           borderRadius: "50%",
           padding: 6,
           cursor: "pointer",
           boxShadow: "0 0 10px rgba(0,0,0,.5)"
         }}
       >
-        {collapsed ? <ChevronRight size={18}/> : <ChevronLeft size={18}/>}
+        {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </div>
 
     </div>
