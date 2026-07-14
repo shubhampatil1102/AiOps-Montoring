@@ -3,7 +3,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { runScript, fetchJobs, fetchLibrary, runLibrary, fetchApprovals } from "@/api/scripts";
 import { fetchDevices } from "@/api/devices";
 import GlassCard from "../components/GlassCard";
-import { SuperscriptIcon } from "lucide-react";
 
 type ScriptLibrary = {
     id: number;
@@ -88,13 +87,6 @@ export default function Scripts() {
     });
 
     /* ---------------- HELPERS ---------------- */
-
-    function statusColor(status: string) {
-        if (status === "SUCCESS") return "#22c55e";
-        if (status === "FAILED") return "#ef4444";
-        if (status === "RUNNING") return "#f59e0b";
-        return "#64748b";
-    }
 
     function duration(start?: number, end?: number) {
         if (!start || !end) return "-";

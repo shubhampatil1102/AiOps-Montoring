@@ -1,7 +1,7 @@
 import { Logger } from "./logger.service";
-import { loadPolicy } from "./policyService";
-import { startPresenceMonitor } from "./presenceService";
-import { ensureInventoryTable, ensureRuntimeTables } from "./schemaService";
+import { loadPolicy } from "./policy.service";
+import { startPresenceMonitor } from "./presence.service";
+import { ensureInventoryTable, ensureRuntimeTables } from "./schema.service";
 
 export function initializeRuntime() {
   loadPolicy();

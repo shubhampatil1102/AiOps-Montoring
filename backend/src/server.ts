@@ -1,7 +1,7 @@
 import express from "express";
 import { SERVER_PORT } from "./config/server";
-import { configureMiddleware } from "./middleware/appMiddleware";
-import { errorMiddleware } from "./middleware/errorMiddleware";
+import { configureMiddleware } from "./middleware/app.middleware";
+import { errorMiddleware } from "./middleware/error.middleware";
 import { registerRoutes } from "./routes";
 import { Logger } from "./services/logger.service";
 import { initializeRuntime } from "./services/startup.service";

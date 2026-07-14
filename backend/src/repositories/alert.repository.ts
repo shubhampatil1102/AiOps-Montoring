@@ -1,4 +1,4 @@
-import { query } from "./dbRepository";
+import { query } from "./db.repository";
 
 export async function findRecentAlerts() {
   return query(

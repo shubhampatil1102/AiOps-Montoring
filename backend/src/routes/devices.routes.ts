@@ -9,7 +9,7 @@ import {
   getDevices,
   getDevicesHardware,
   getTopProcesses,
-} from "../controllers/device.controller";
+} from "../controllers/devices.controller";
 
 const router = Router();
 

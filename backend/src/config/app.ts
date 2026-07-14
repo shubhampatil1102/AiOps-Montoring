@@ -1,4 +1,4 @@
-export const appConfig = {
+const appConfig = {
   port: 4000,
 };
 

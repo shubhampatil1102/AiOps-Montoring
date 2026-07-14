@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const heal_controller_1 = require("../controllers/heal.controller");
+const router = (0, express_1.Router)();
+router.get("/heal/suggestions", heal_controller_1.getSuggestions);
+router.post("/heal/approve/:id", heal_controller_1.approveSuggestion);
+router.post("/heal/reject/:id", heal_controller_1.rejectSuggestion);
+router.get("/heal/timeline", heal_controller_1.getHealTimeline);
+exports.default = router;

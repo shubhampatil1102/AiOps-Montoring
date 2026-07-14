@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import * as policyService from "../services/policyService";
+import * as policyService from "../services/policy.service";
 
 export async function getPolicies(_: Request, res: Response) {
   const policy = await policyService.getPolicies();

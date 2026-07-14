@@ -5,7 +5,6 @@ import { API_URL } from "@/api/config";
 import SeverityBadge from "@/components/SeverityBadge";
 import Spinner from "@/components/Spinner";
 import { timeAgo } from "@/utils/time";
-import { title } from "process";
 
 type Issue = {
   id: string;
@@ -20,21 +19,6 @@ type Issue = {
   action_required?: boolean;
   auto_remediation_available?: boolean;
 };
-
-type EscalationLevel = {
-  level: string;
-  trigger: string;
-  owner: string;
-  targetSla: string;
-  channel: string;
-};
-
-const ESCALATION_MATRIX: EscalationLevel[] = [
-  { level: "L1", trigger: "New incident detected", owner: "NOC On-Call", targetSla: "5 min", channel: "email + ops feed" },
-  { level: "L2", trigger: "No ACK after 10 min", owner: "Platform Engineer", targetSla: "15 min", channel: "email + pager" },
-  { level: "L3", trigger: "Service impact confirmed", owner: "SRE Lead", targetSla: "30 min", channel: "email + bridge" },
-  { level: "L4", trigger: "Business critical outage", owner: "Incident Commander", targetSla: "Immediate", channel: "war room + exec email" },
-];
 
 export default function Incidents() {
   const [search, setSearch] = useState("");
@@ -85,11 +69,6 @@ export default function Incidents() {
       setSelectedKey(getKey(filtered[0]));
     }
   }, [filtered, selectedKey]);
-
-  const selected = useMemo(
-    () => filtered.find((i) => getKey(i) === selectedKey) || null,
-    [filtered, selectedKey]
-  );
 
   const openCount = issues.filter((i) => i.status === "open").length;
   const pendingCount = issues.filter((i) => i.status === "pending").length;
@@ -180,16 +159,6 @@ export default function Incidents() {
                     "in-progress": "#8b5cf6",
                     resolved: "#16a34a",
                   };
-                  <div
-                    title={issue.id}   // ← shows full ID on hover
-                    style={{
-                      fontWeight: 700, color: "#0f172a", fontSize: 12,
-                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                      maxWidth: 160
-                    }}
-                  >
-                    {issue.id}
-                  </div>
                   const statusColor = statusColors[issue.status] || "#64748b";
                   return (
                     <tr
@@ -366,39 +335,6 @@ function getKey(issue: Issue) {
   return `${issue.id}-${issue.created_at}`;
 }
 
-function buildTimeline(issue: Issue | null) {
-  if (!issue) {
-    return [
-      { title: "No incident selected", description: "Select an incident row to inspect details." },
-    ];
-  }
-  const detected = new Date(Number(issue.created_at)).toLocaleString();
-  const statusDisplay = issue.status.charAt(0).toUpperCase() + issue.status.slice(1).replace("-", " ");
-  return [
-    { title: "Detection", description: `${detected} | Issue detected on system.` },
-    { title: "Classification", description: `Type: ${issue.type.charAt(0).toUpperCase() + issue.type.slice(1)} | Severity: ${issue.severity}` },
-    { title: "Status", description: `Current: ${statusDisplay}` },
-    { title: "Remediation", description: issue.auto_remediation_available ? "Auto-remediation available - click ⚙️ to execute." : "Manual action may be required." },
-  ];
-}
-
-function buildSummary(issue: Issue | null) {
-  if (!issue) return "Select an incident to view details.";
-  const detected = new Date(Number(issue.created_at)).toLocaleString();
-  const statusDisplay = issue.status.charAt(0).toUpperCase() + issue.status.slice(1).replace("-", " ");
-  return [
-    `Issue ID: ${issue.id}`,
-    `Title: ${issue.title}`,
-    `Type: ${issue.type.charAt(0).toUpperCase() + issue.type.slice(1)}`,
-    `Severity: ${issue.severity.toUpperCase()}`,
-    `Status: ${statusDisplay}`,
-    `Detected At: ${detected}`,
-    `Description: ${issue.description}`,
-    `Remediation Available: ${issue.auto_remediation_available ? "Yes" : "No"}`,
-    `Device: ${issue.device_id || "N/A"}`,
-  ].join("\n");
-}
-
 const tableOuter = {
   border: "1px solid #d1d5db",
   borderRadius: 12,
@@ -406,29 +342,6 @@ const tableOuter = {
   background: "#ffffff",
   width: "100%",
   boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
-};
-
-const panelOuter = {
-  border: "1px solid #1f2937",
-  borderRadius: 10,
-  background: "#020617",
-  padding: 12,
-  display: "grid",
-  gap: 10,
-};
-
-const panelSection = {
-  border: "1px solid #1f2937",
-  borderRadius: 10,
-  padding: 12,
-  background: "#111827",
-};
-
-const panelTitle = {
-  margin: "0 0 12px",
-  fontSize: 14,
-  fontWeight: 600,
-  color: "#e2e8f0",
 };
 
 const tableBase = {
@@ -459,44 +372,6 @@ const td = {
   fontSize: 14,
 };
 
-const matrixTh = {
-  textAlign: "left" as const,
-  fontSize: 12,
-  color: "#64748b",
-  padding: "8px",
-  borderBottom: "1px solid #e2e8f0",
-  borderRight: "1px solid #e2e8f0",
-  background: "#f1f5f9",
-};
-
-const matrixTd = {
-  fontSize: 12,
-  color: "#334155",
-  padding: "8px",
-  borderBottom: "1px solid #e2e8f0",
-  borderRight: "1px solid #e2e8f0",
-};
-
-const timelineRow = {
-  border: "1px solid #1f2937",
-  borderRadius: 8,
-  background: "#0f172a",
-  padding: "10px 12px",
-  color: "#e2e8f0",
-};
-
-const summaryBox = {
-  width: "100%",
-  minHeight: 130,
-  border: "1px solid #1f2937",
-  borderRadius: 8,
-  padding: 10,
-  fontSize: 12,
-  color: "#e2e8f0",
-  background: "#0f172a",
-  resize: "vertical" as const,
-};
-
 const tableFooter = {
   borderTop: "2px solid #e5e7eb",
   background: "#f9fafb",
@@ -520,18 +395,6 @@ const controlInput = {
   outline: "none",
 };
 
-const lightControl = {
-  width: "100%",
-  border: "1px solid #cbd5e1",
-  borderRadius: 8,
-  height: 36,
-  padding: "0 10px",
-  fontSize: 13,
-  color: "#0f172a",
-  background: "#fff",
-  outline: "none",
-};
-
 function pill(color: string) {
   return {
     padding: "5px 12px",
@@ -542,18 +405,5 @@ function pill(color: string) {
     fontSize: 12,
     display: "inline-flex",
     alignItems: "center",
-  };
-}
-
-function btn(color: string) {
-  return {
-    background: color,
-    color: "white",
-    border: "none",
-    padding: "8px 12px",
-    borderRadius: 8,
-    fontWeight: 700,
-    cursor: "pointer",
-    fontSize: 12,
   };
 }

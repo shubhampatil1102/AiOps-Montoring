@@ -35,7 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getPolicies = getPolicies;
 exports.savePolicies = savePolicies;
-const policyService = __importStar(require("../services/policyService"));
+const policyService = __importStar(require("../services/policy.service"));
 async function getPolicies(_, res) {
     const policy = await policyService.getPolicies();
     res.send(policy);
