@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { Dispatch, SetStateAction } from "react";
+import { sidebarNavigation } from "../constants/navigation";
 import {
   LayoutDashboard,
   ShieldCheck,
@@ -20,16 +21,16 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
-  const menu = [
-    { name: "Dashboard", icon: LayoutDashboard, path: "/" },
-    { name: "Devices", icon: LaptopIcon, path: "/devices" },
-    { name: "Auto Heal", icon: Wrench, path: "/auto-heal" },
-    { name: "Incidents", icon: CpuIcon, path: "/incidents" },
-    { name: "Policies", icon: LockIcon, path: "/policies" },
-    {name: "Scripts", icon: SuperscriptIcon, path: "/scripts" },
-    { name: "Remediations", icon: BotIcon, path: "/remediations" },
-    { name: "Security", icon: ShieldCheck, path: "/security" },
-  ];
+  // const menu = [
+  //   { name: "Dashboard", icon: LayoutDashboard, path: "/" },
+  //   { name: "Devices", icon: LaptopIcon, path: "/devices" },
+  //   { name: "Auto Heal", icon: Wrench, path: "/auto-heal" },
+  //   { name: "Incidents", icon: CpuIcon, path: "/incidents" },
+  //   { name: "Policies", icon: LockIcon, path: "/policies" },
+  //   {name: "Scripts", icon: SuperscriptIcon, path: "/scripts" },
+  //   { name: "Remediations", icon: BotIcon, path: "/remediations" },
+  //   { name: "Security", icon: ShieldCheck, path: "/security" },
+  // ];
 
   return (
 
@@ -60,7 +61,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       {/* ===== MENU ===== */}
       <div style={{ flex: 1 }}>
 
-        {menu.map((m, i) => {
+        {sidebarNavigation.map((m, i) => {
 
           const Icon = m.icon;
 
