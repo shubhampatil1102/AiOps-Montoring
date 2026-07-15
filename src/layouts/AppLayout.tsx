@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Topbar from "./Topbar";
+import styles from "./AppLayout.module.css";
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -17,10 +18,7 @@ export default function AppLayout() {
 
   return (
     <div
-      style={{
-        display: "flex",
-        minHeight: "100dvh",
-      }}
+      className={styles.layout}
     >
       {/* Sidebar */}
       <Sidebar
@@ -30,21 +28,12 @@ export default function AppLayout() {
 
       {/* Main Content */}
       <main
-        style={{
-          flex: 1,
-          // marginLeft: sidebarWidth,
-          transition: "margin-left .25s ease",
-          background: "#f1f5f9",
-          minHeight: "100dvh",
-          overflow: "auto",
-        }}
+        className={styles.main}
       >
         <Topbar />
 
         <div
-          style={{
-            padding: 24,
-          }}
+          className={styles.content}
         >
           <Outlet />
         </div>
