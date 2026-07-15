@@ -2,7 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { API_URL } from "@/api/config";
 import GlassCard from "../components/GlassCard";
+import styles from "./Dashboard.module.css";
+import useDashboardData from "../hooks/useDashboardData";
 import UsageBar from "../components/UsageBar";
+import StatCard from "../components/StatCard";
+import { sidebarColors } from "../themes/colors";
+// import { TriangleAlert, OfflineIcon } from "lucide-react";
+import Card from "../components/ui/Card";
+import PageHeader from "../layouts/PageHeader";
+// import Button from "../components/ui/Button";
+// import Badge from "../components/ui/Badge";
+import Badge from "../components/ui/Badge/Badge";
+import DeviceTable from "../components/dashboard/DeviceTable";
+import DeviceWidget from "../components/dashboard/widgets/DeviceWidget";
+import RecentAlertsWidget from "../components/dashboard/widgets/RecentAlertsWidget";
+
 
 type Device = {
   id: string;
@@ -24,15 +38,23 @@ type DeviceHardware = {
 type HardwareMap = Record<string, DeviceHardware>;
 
 export default function Dashboard() {
-  const { data: devices = [] } = useQuery<Device[]>({
-    queryKey: ["devices"],
-    queryFn: async () => {
-      const r = await fetch(`${API_URL}/devices`);
-      return r.json();
-    },
-    refetchInterval: 5000,
-  });
-
+  // const { data: devices = [] } = useQuery<Device[]>({
+  //   queryKey: ["devices"],
+  //   queryFn: async () => {
+  //     const r = await fetch(`${API_URL}/devices`);
+  //     return r.json();
+  //   },
+  //   refetchInterval: 5000,
+  // });
+  const {
+    devices,
+    alerts,
+    hardware,
+    healthy,
+    warning,
+    critical,
+    offline,
+  } = useDashboardData();
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -40,27 +62,27 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  const { data: alerts = [] } = useQuery<Alert[]>({
-    queryKey: ["alerts"],
-    queryFn: async () => {
-      const r = await fetch(`${API_URL}/alerts`);
-      return r.json();
-    },
-    refetchInterval: 5000,
-  });
+  // const { data: alerts = [] } = useQuery<Alert[]>({
+  //   queryKey: ["alerts"],
+  //   queryFn: async () => {
+  //     const r = await fetch(`${API_URL}/alerts`);
+  //     return r.json();
+  //   },
+  //   refetchInterval: 5000,
+  // });
 
-  const { data: hardware = {} } = useQuery<HardwareMap>({
-    queryKey: ["hardware", devices.map((device) => device.id).join(",")],
-    queryFn: async () => {
-      const ids = devices.map((device) => device.id).join(",");
-      if (!ids) return {};
+  // const { data: hardware = {} } = useQuery<HardwareMap>({
+  //   queryKey: ["hardware", devices.map((device) => device.id).join(",")],
+  //   queryFn: async () => {
+  //     const ids = devices.map((device) => device.id).join(",");
+  //     if (!ids) return {};
 
-      const r = await fetch(`${API_URL}/devices/hardware?ids=${encodeURIComponent(ids)}`);
-      return r.json();
-    },
-    refetchInterval: 4000,
-    enabled: devices.length > 0,
-  });
+  //     const r = await fetch(`${API_URL}/devices/hardware?ids=${encodeURIComponent(ids)}`);
+  //     return r.json();
+  //   },
+  //   refetchInterval: 4000,
+  //   enabled: devices.length > 0,
+  // });
 
   function getReason(device: Device) {
     if (Date.now() - Number(device.time || 0) > 20000) return "Agent not reporting";
@@ -71,33 +93,36 @@ export default function Dashboard() {
     return "Healthy";
   }
 
-  const healthy = devices.filter(
-    (device) =>
-      Date.now() - Number(device.time || 0) < 20000 &&
-      Number(device.cpu || 0) < 70 &&
-      Number(device.ram || 0) < 80
-  );
+  // const healthy = devices.filter(
+  //   (device) =>
+  //     Date.now() - Number(device.time || 0) < 20000 &&
+  //     Number(device.cpu || 0) < 70 &&
+  //     Number(device.ram || 0) < 80
+  // );
 
-  const warning = devices.filter(
-    (device) =>
-      Date.now() - Number(device.time || 0) < 20000 &&
-      ((Number(device.cpu || 0) >= 70 && Number(device.cpu || 0) < 90) ||
-        (Number(device.ram || 0) >= 80 && Number(device.ram || 0) < 90))
-  );
+  // const warning = devices.filter(
+  //   (device) =>
+  //     Date.now() - Number(device.time || 0) < 20000 &&
+  //     ((Number(device.cpu || 0) >= 70 && Number(device.cpu || 0) < 90) ||
+  //       (Number(device.ram || 0) >= 80 && Number(device.ram || 0) < 90))
+  // );
 
-  const critical = devices.filter(
-    (device) =>
-      Date.now() - Number(device.time || 0) < 20000 &&
-      (Number(device.cpu || 0) >= 90 || Number(device.ram || 0) >= 90)
-  );
+  // const critical = devices.filter(
+  //   (device) =>
+  //     Date.now() - Number(device.time || 0) < 20000 &&
+  //     (Number(device.cpu || 0) >= 90 || Number(device.ram || 0) >= 90)
+  // );
 
-  const offline = devices.filter((device) => Date.now() - Number(device.time || 0) >= 20000);
+  // const offline = devices.filter((device) => Date.now() - Number(device.time || 0) >= 20000);
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 20 }}>Environment Health</h1>
+    <div style={{ padding: 10 }}>
+      <PageHeader
+        title="Dashboard"
+        description="Monitor your infrastructure health in real time."
+      />
 
-      <div
+      <div className={styles.kpiGrid}
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(4,1fr)",
@@ -105,10 +130,15 @@ export default function Dashboard() {
           marginBottom: 30,
         }}
       >
-        <HealthCard title="Healthy" value={healthy.length} color="#22c55e" />
+        {/* <HealthCard title="Healthy" value={healthy.length} color="#22c55e" />
         <HealthCard title="Warning" value={warning.length} color="#f59e0b" />
         <HealthCard title="Critical" value={critical.length} color="#ef4444" />
-        <HealthCard title="Offline" value={offline.length} color="#6b7280" />
+        <HealthCard title="Offline" value={offline.length} color="#6b7280" /> */}
+        <StatCard title="Total Devices" value={devices.length} />
+        <StatCard title="Healthy" value={healthy.length} />
+        <StatCard title="Critical" value={critical.length} />
+        <StatCard title="Offline" value={offline.length} />
+
       </div>
 
       <div
@@ -120,90 +150,27 @@ export default function Dashboard() {
           zIndex: 1,
         }}
       >
-        <GlassCard style={{ position: "relative", zIndex: 20 }}>
-          <div className="glass" style={{ padding: 20, borderRadius: 12, overflow: "visible" }}>
-            <h3 style={{ marginBottom: 10 }}>Devices</h3>
+        <DeviceWidget
+          devices={devices}
+          hardware={hardware}
+          getReason={getReason}
+        />
+        {/* <Card title="Devices" >
 
-            <table style={{ width: "100%", borderCollapse: "collapse", overflow: "visible" }}>
-              <thead>
-                <tr style={{ background: "#f1f5f9" }}>
-                  <th style={th}>Device</th>
-                  <th style={th}>CPU</th>
-                  <th style={th}>RAM</th>
-                  <th style={th}>Status</th>
-                  <th style={th}>CPU Temp</th>
-                </tr>
-              </thead>
+          <DeviceTable
+            devices={devices}
+            hardware={hardware}
+            getReason={getReason}
+          />
 
-              <tbody>
-                {devices.map((device) => {
-                  const online = Date.now() - Number(device.time || 0) < 20000;
+        </Card> */}
 
-                  let status = "Healthy";
-                  let color = "#22c55e";
-
-                  if (!online) {
-                    status = "Offline";
-                    color = "#6b7280";
-                  } else if (Number(device.cpu || 0) > 90 || Number(device.ram || 0) > 90) {
-                    status = "Critical";
-                    color = "#ef4444";
-                  } else if (Number(device.cpu || 0) > 70 || Number(device.ram || 0) > 80) {
-                    status = "Warning";
-                    color = "#f59e0b";
-                  }
-
-                  return (
-                    <tr key={device.id}>
-                      <td style={td}>{device.id}</td>
-                      <td style={td}>
-                        <UsageBar value={Number(device.cpu || 0)} />
-                      </td>
-                      <td style={td}>
-                        <UsageBar value={Number(device.ram || 0)} />
-                      </td>
-                      <td style={td} title={getReason(device)}>
-                        <span
-                          style={{
-                            padding: "5px 8px",
-                            borderRadius: 20,
-                            background: `${color}30`,
-                            color,
-                            fontWeight: 700,
-                            cursor: "help",
-                            fontSize: 12,
-                          }}
-                        >
-                          {status}
-                        </span>
-                      </td>
-                      <td style={td}>
-                        {hardware?.[device.id]?.cpu_temp !== undefined
-                          ? `${hardware[device.id].cpu_temp} C`
-                          : "--"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </GlassCard>
-
-        <GlassCard style={{ position: "relative", zIndex: 1 }}>
+        {/* <Card title="Live Events" >
           <div
-            className="glass"
-            style={{
-              padding: 20,
-              borderRadius: 12,
-              height: 520,
-              display: "flex",
-              flexDirection: "column",
-            }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div className="pulse-dot" />
-              <h3 style={{ margin: 0 }}>Live Events</h3>
+
             </div>
 
             <div style={{ overflowY: "auto", marginTop: 10 }}>
@@ -224,7 +191,10 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-        </GlassCard>
+        </Card> */}
+        <RecentAlertsWidget
+          alerts={alerts}
+        />
       </div>
     </div>
   );
@@ -245,7 +215,7 @@ function HealthCard({
     <div
       className={`glass ${isCritical ? "pulse-critical" : ""}`}
       style={{
-        padding: 28,
+        // padding: 28,
         position: "relative",
         overflow: "hidden",
         transition: "all .25s ease",

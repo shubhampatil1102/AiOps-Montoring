@@ -35,15 +35,14 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
    * Remove absolute positioning once the final AppLayout
    * and Topbar are implemented.
    */
-  const SIDEBAR_WIDTH = 240;
-  const SIDEBAR_COLLAPSED_WIDTH = 70;
+  const SIDEBAR_WIDTH = 260;
+  const SIDEBAR_COLLAPSED_WIDTH = 80;
   return (
 
     <div
       style={{
         width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
         transition: "all 0.35s ease",
-        height: "100dvh",
         background: sidebarColors.background,
         color: sidebarColors.text,
         display: "flex",

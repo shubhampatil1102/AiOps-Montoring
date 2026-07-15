@@ -1,0 +1,32 @@
+.header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:20px;
+}
+
+.header h3{
+margin:0;
+font-size:20px;
+font-weight:700;
+}
+
+.header p{
+margin-top:6px;
+font-size:13px;
+color:#64748b;
+}
+
+.toolbar{
+margin-bottom:16px;
+}
+
+.content{
+flex:1;
+}
+
+.footer{
+margin-top:20px;
+display:flex;
+justify-content:flex-end;
+}
