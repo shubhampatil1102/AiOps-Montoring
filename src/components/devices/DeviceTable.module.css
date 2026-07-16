@@ -1,0 +1,135 @@
+.tableWrap {
+  height: 560px;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.table {
+  width: 100%;
+  min-width: 1060px;
+  border-collapse: collapse;
+}
+
+.table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  box-shadow: 0 1px 0 #e5e7eb;
+}
+
+.table th,
+.table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.table th {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.table tbody tr {
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-transform: inherit;
+}
+
+.deviceCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.healthy {
+  background: #22c55e;
+}
+
+.warning {
+  background: #f59e0b;
+}
+
+.critical {
+  background: #ef4444;
+}
+
+.offline {
+  background: #64748b;
+}
+
+.metricCell {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) 52px;
+  gap: 10px;
+  align-items: center;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.pageActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pageActions {
+    justify-content: space-between;
+  }
+}

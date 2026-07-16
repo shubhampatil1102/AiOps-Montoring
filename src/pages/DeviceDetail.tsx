@@ -2,8 +2,16 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { API_URL } from "@/api/config";
-import { fetchDevice, fetchDeviceHistory } from "@/api/devices";
-import { fetchTopProcesses } from "@/api/processes";
+import {
+  fetchDevice,
+  fetchDeviceCompliance,
+  fetchDeviceEvents,
+  fetchDeviceHardware,
+  fetchDeviceHistory,
+  fetchDeviceInventory,
+  fetchDeviceTopProcesses,
+  fetchDeviceUpdates,
+} from "@/api/devices";
 import "./remediation.css";
 import Spinner from "../components/Spinner";
 import {
@@ -35,8 +43,8 @@ type MetricPoint = {
 
 type ProcessItem = {
   name: string;
-  cpu: number;
-  ram: number;
+  cpu?: number | string;
+  ram?: number | string;
 };
 
 type DeviceEvent = {
@@ -61,7 +69,7 @@ type Hardware = {
   battery_health_percent?: number;
   fan_status?: string;
   disk_free?: number;
-  risk?: "LOW" | "MEDIUM" | "HIGH";
+  risk?: "LOW" | "MEDIUM" | "HIGH" | string;
   health_score?: number;
 };
 
@@ -138,62 +146,42 @@ export default function DeviceDetail() {
 
   const { data: processes = [] } = useQuery<ProcessItem[]>({
     queryKey: ["top-processes", id],
-    queryFn: () => fetchTopProcesses(id),
+    queryFn: () => fetchDeviceTopProcesses(id),
     refetchInterval: 5000,
     enabled: !!id,
   });
 
   const { data: events = [], refetch: refetchEvents } = useQuery<DeviceEvent[]>({
     queryKey: ["events", id],
-    queryFn: async () => {
-      const r = await fetch(`${API}/devices/${id}/events`);
-      if (!r.ok) return [];
-      return r.json();
-    },
+    queryFn: () => fetchDeviceEvents(id),
     refetchInterval: 5000,
     enabled: !!id,
   });
 
   const { data: compliance = {} } = useQuery<Compliance>({
     queryKey: ["compliance", id],
-    queryFn: async () => {
-      const r = await fetch(`${API}/devices/${id}/compliance`);
-      if (!r.ok) return {};
-      return r.json();
-    },
+    queryFn: () => fetchDeviceCompliance(id),
     refetchInterval: 4000,
     enabled: !!id
   });
 
   const { data: hardware = {} } = useQuery<Hardware>({
     queryKey: ["hardware", id],
-    queryFn: async () => {
-      const r = await fetch(`${API}/devices/${id}/hardware`);
-      if (!r.ok) return {};
-      return r.json();
-    },
+    queryFn: () => fetchDeviceHardware(id),
     refetchInterval: 4000,
     enabled: !!id
   });
 
   const { data: update = {}, refetch: refetchUpdate } = useQuery<DeviceUpdate>({
     queryKey: ["update", id],
-    queryFn: async () => {
-      const r = await fetch(`${API}/devices/${id}/updates`);
-      if (!r.ok) return {};
-      return r.json();
-    },
+    queryFn: () => fetchDeviceUpdates(id),
     refetchInterval: 4000,
     enabled: !!id
   });
 
   const { data: inventory = {} } = useQuery<InventoryRecord>({
     queryKey: ["inventory", id],
-    queryFn: async () => {
-      const r = await fetch(`${API}/devices/${id}/inventory`);
-      if (!r.ok) return {};
-      return r.json();
-    },
+    queryFn: () => fetchDeviceInventory(id),
     refetchInterval: 5000,
     enabled: !!id
   });

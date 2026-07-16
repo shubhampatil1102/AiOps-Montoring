@@ -1,0 +1,45 @@
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+
+.textarea {
+  min-height: 180px;
+  resize: vertical;
+  font-family: Consolas, monospace;
+}
+
+.input:focus,
+.textarea:focus {
+  border-color: #2563eb;
+}
+
+.selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 13px;
+}
+
+.selected button {
+  border: none;
+  background: transparent;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-weight: 700;
+}

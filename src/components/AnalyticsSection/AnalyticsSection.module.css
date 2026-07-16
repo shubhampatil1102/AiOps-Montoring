@@ -1,0 +1,19 @@
+.analytics{
+display:flex;
+flex-direction:column;
+gap:24px;
+margin-top:24px;
+grid-column:1 / -1;
+}
+
+.bottomRow{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:24px;
+}
+
+@media (max-width: 1024px){
+.bottomRow{
+grid-template-columns:1fr;
+}
+}

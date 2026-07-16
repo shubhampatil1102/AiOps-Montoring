@@ -1,113 +1,165 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchDevices } from "@/api/devices";
-import { useNavigate } from "react-router-dom";
-import GlassCard from "../components/GlassCard";
-import Spinner from "../components/Spinner";
-import { timeAgo } from "../utils/time";
+import { useMemo, useState } from "react";
+import DashboardWidget from "../components/dashboard/DashboardWidget";
+import {
+  DeviceDetailsDrawer,
+  DeviceTable,
+  DeviceTableSkeleton,
+  DeviceToolbar,
+  type DeviceSortKey,
+} from "../components/devices";
+import { getDeviceStatus } from "../components/devices/deviceUtils";
+import PageHeader from "../layouts/PageHeader";
+import { useDevices, useDevicesHardware } from "@/hooks/useDevices";
+import type { Device, DeviceStatus, HardwareMap } from "@/types/device";
+import styles from "./Devices.module.css";
+
+const PAGE_SIZE = 12;
 
 export default function Devices() {
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<DeviceStatus | "All">("All");
+  const [sortKey, setSortKey] = useState<DeviceSortKey>("id");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
-  const navigate = useNavigate();
+  const devicesQuery = useDevices();
+  const devices = devicesQuery.data || [];
+  const hardwareQuery = useDevicesHardware(devices.map((device) => device.id));
+  const hardware = hardwareQuery.data || {};
 
-  function getReason(d: any) {
-    if (Date.now() - d.time > 20000) return "Agent not reporting";
-    if (d.cpu > 90) return "CPU critically high";
-    if (d.ram > 90) return "Memory critically high";
-    if (d.cpu > 75) return "CPU elevated";
-    if (d.ram > 80) return "Memory elevated";
-    return "Healthy";
+  const filteredDevices = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return devices.filter((device) => {
+      const matchesSearch = !query || device.id.toLowerCase().includes(query);
+      const deviceStatus = getDeviceStatus(device);
+      const matchesStatus = status === "All" || status === deviceStatus;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [devices, search, status]);
+
+  const sortedDevices = useMemo(
+    () => sortDevices(filteredDevices, hardware, sortKey, sortDirection),
+    [filteredDevices, hardware, sortDirection, sortKey]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(sortedDevices.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedDevices = sortedDevices.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  function handleSort(key: DeviceSortKey) {
+    if (key === sortKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(key);
+    setSortDirection("asc");
   }
 
-  function formatUptime(boot: number) {
-    if (!boot) return "-";
-
-    const sec = Math.floor((Date.now() - boot) / 1000);
-    const d = Math.floor(sec / 86400);
-    const h = Math.floor((sec % 86400) / 3600);
-    const m = Math.floor((sec % 3600) / 60);
-
-    return `${d}d ${h}h ${m}m`;
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
   }
 
-  const { data: devices = [], isLoading, isError } = useQuery({
-    queryKey: ["devices"],
-    queryFn: fetchDevices,
-    refetchInterval: 5000,
-  });
+  function handleStatusChange(value: DeviceStatus | "All") {
+    setStatus(value);
+    setPage(1);
+  }
 
-  if (isLoading) return <Spinner label="Loading devices..." />;
-  if (isError) return <h2 style={{ padding: 40 }}>API Error</h2>;
+  async function handleRefresh() {
+    await Promise.all([
+      devicesQuery.refetch(),
+      hardwareQuery.refetch(),
+    ]);
+  }
 
   return (
-    <GlassCard>
-      <div style={{ padding: 20, borderRadius: 12 }}>
-        <h2 style={{ marginBottom: 20 }}>Devices</h2>
+    <div className={styles.page}>
+      <PageHeader
+        title="Devices"
+        description="Monitor managed devices, hardware health, compliance, and remediation signals."
+      />
 
-        <table style={{
-          width: "100%",
-          background: "white",
-          borderRadius: 10,
-          borderCollapse: "collapse",
-        }}>
+      <DashboardWidget
+        title="Managed Devices"
+        subtitle={`${filteredDevices.length} devices`}
+        toolbar={(
+          <DeviceToolbar
+            isRefreshing={devicesQuery.isFetching || hardwareQuery.isFetching}
+            onRefresh={handleRefresh}
+            onSearchChange={handleSearchChange}
+            onStatusChange={handleStatusChange}
+            search={search}
+            status={status}
+          />
+        )}
+      >
+        {devicesQuery.isLoading ? (
+          <DeviceTableSkeleton />
+        ) : devicesQuery.isError ? (
+          <div className={styles.state}>Unable to load devices.</div>
+        ) : (
+          <DeviceTable
+            devices={pagedDevices}
+            hardware={hardware}
+            onPageChange={setPage}
+            onSelectDevice={setSelectedDevice}
+            onSort={handleSort}
+            page={currentPage}
+            pageSize={PAGE_SIZE}
+            sortDirection={sortDirection}
+            sortKey={sortKey}
+            total={sortedDevices.length}
+          />
+        )}
+      </DashboardWidget>
 
-          <thead>
-            <tr style={{ background: "#f1f5f9"}}>
-              <th style={th}>Device</th>
-              <th style={th}>CPU</th>
-              <th style={th}>RAM</th>
-              <th style={th}>Uptime</th>
-              <th style={th}>Last Seen</th>
-              <th style={th}>Status</th>
-            </tr>
-          </thead>
-
-          <tbody>
-
-            {devices.map((d: any) => {
-              const online = Date.now() - d.time < 20000;
-
-              return (
-                <tr
-                  key={d.id}
-                  onClick={() => navigate(`/devices/${d.id}`)}
-                  style={{
-                    cursor: "pointer",
-                    transition: "0.5s",
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#e4f0fc")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "white")}
-                >
-                  <td style={td}><div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div className={`pulse-dot ${Date.now() - d.time > 20000 ? "device-offline" : ""}`} />
-                    &nbsp; {d.id}
-                  </div></td>
-                  <td style={td}>{Number(d.cpu || 0).toFixed(1)}%</td>
-                  <td style={td}>{Number(d.ram || 0).toFixed(1)}%</td>
-                  <td style={td}>{formatUptime(d.boot_time)}</td>
-                  <td style={{ ...td, fontSize: 12, opacity: .7 }}>
-                    {timeAgo(d.time)}
-                  </td>
-
-                  <td style={td} title={getReason(d)}>
-                    <span style={{
-                      color: online ? "#16a34a" : "#ef4444",
-                      fontWeight: 600,
-                      cursor: "help"
-                    }}>
-                      {online ? "ONLINE" : "OFFLINE"}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-
-          </tbody>
-
-        </table>
-      </div>
-    </GlassCard>
+      <DeviceDetailsDrawer
+        device={selectedDevice}
+        onClose={() => setSelectedDevice(null)}
+        open={Boolean(selectedDevice)}
+      />
+    </div>
   );
 }
 
-const th = { padding: 12, textAlign: "left" as const };
-const td = { padding: 12, borderTop: "1px solid #e2e8f0" };
+function sortDevices(
+  devices: Device[],
+  hardware: HardwareMap,
+  sortKey: DeviceSortKey,
+  direction: "asc" | "desc"
+) {
+  const modifier = direction === "asc" ? 1 : -1;
+
+  return [...devices].sort((a, b) => {
+    const aValue = getSortValue(a, hardware, sortKey);
+    const bValue = getSortValue(b, hardware, sortKey);
+
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return (aValue - bValue) * modifier;
+    }
+
+    return String(aValue).localeCompare(String(bValue)) * modifier;
+  });
+}
+
+function getSortValue(
+  device: Device,
+  hardware: HardwareMap,
+  sortKey: DeviceSortKey
+) {
+  if (sortKey === "cpu") return Number(device.cpu || 0);
+  if (sortKey === "ram") return Number(device.ram || 0);
+  if (sortKey === "status") return getDeviceStatus(device);
+  if (sortKey === "cpuTemp") return Number(hardware[device.id]?.cpu_temp || 0);
+  if (sortKey === "disk") return Number(hardware[device.id]?.disk || 0);
+  if (sortKey === "lastSeen") return Number(device.last_seen || device.time || 0);
+
+  return device.id;
+}

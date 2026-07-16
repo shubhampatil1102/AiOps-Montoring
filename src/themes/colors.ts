@@ -7,10 +7,13 @@ export const sidebarColors = {
   Card2:"orange",
   Card3:"red",
   Card4:"gray",
-// primary: #6B63B5,
-// secondary: #4B5AF9,
-// accent: #FF9501,
-// gray-light: #F5F7FA,
-// gray-dark: #2C2C2C,
-// border: #E8E8E8
+
+};
+export const dashboardColors = {
+  primary: "#6B63B5",
+  secondary: "#4B5AF9",
+  success: "#10B981",
+  warning: "#EF4444",
+  accent: "#FF9501",
+  info: "#3B82F6",
 };

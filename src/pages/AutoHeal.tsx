@@ -2,6 +2,7 @@ import { Fragment, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Activity, Sparkles } from "lucide-react";
 import { API_URL } from "@/api/config";
+import AutoHealPage from "./AutoHealPage";
 
 type Suggestion = {
   id: number;
@@ -25,7 +26,9 @@ type TimelineEntry = {
   agent_message?: string;
 };
 
-export default function AutoHeal() {
+export default AutoHealPage;
+
+function AutoHealLegacy() {
   const { data: suggestions = [], refetch } = useQuery({
     queryKey: ["heal"],
     queryFn: async () => {

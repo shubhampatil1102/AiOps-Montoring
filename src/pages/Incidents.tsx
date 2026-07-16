@@ -5,6 +5,7 @@ import { API_URL } from "@/api/config";
 import SeverityBadge from "@/components/SeverityBadge";
 import Spinner from "@/components/Spinner";
 import { timeAgo } from "@/utils/time";
+// import IncidentManagementPage from "./IncidentManagementPage";
 
 type Issue = {
   id: string;
@@ -20,7 +21,8 @@ type Issue = {
   auto_remediation_available?: boolean;
 };
 
-export default function Incidents() {
+export default function IncidentManagementPage() {
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedKey, setSelectedKey] = useState<string>("");

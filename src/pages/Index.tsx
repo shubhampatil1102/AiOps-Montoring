@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Cpu, HardDrive, MemoryStick, Wifi } from "lucide-react";
-import AgentSidebar from "@/components/Sidebar";
 import AgentStatus from "@/components/AgentStatus";
 import MetricCard from "@/components/MetricCard";
 import TaskQueue from "@/components/TaskQueue";
@@ -11,7 +10,18 @@ const Index = () => {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <AgentSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+      <aside className="w-56 border-r border-border bg-background p-4">
+        {["dashboard", "tasks", "logs", "settings"].map((tab) => (
+          <button
+            key={tab}
+            className="block w-full rounded-lg px-3 py-2 text-left text-sm capitalize text-foreground hover:bg-muted"
+            onClick={() => setActiveTab(tab)}
+            type="button"
+          >
+            {tab}
+          </button>
+        ))}
+      </aside>
 
       <main className="flex-1 overflow-y-auto scrollbar-thin">
         <header className="sticky top-0 z-10 px-6 py-4 border-b border-border bg-background/80 backdrop-blur-md">
