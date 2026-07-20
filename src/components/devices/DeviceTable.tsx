@@ -101,6 +101,12 @@ export default function DeviceTable({
                 <tr
                   key={device.id}
                   onClick={() => onSelectDevice(device)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onSelectDevice(device);
+                    }
+                  }}
                   tabIndex={0}
                   title={getDeviceReason(device)}
                 >

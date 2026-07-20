@@ -1,41 +1,12 @@
-.card {
-  background: white;
-  border-radius: 12px;
-  padding: 18px;
-  border: 1px solid #e2e8f0;
-  transition: 0.2s;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-}
-
-.header {
-  font-size: 13px;
-  color: #64748b;
-  margin-bottom: 8px;
-}
-
-.value {
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.sub {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 6px;
-}
 .card{
 background:#fff;
 border-radius:18px;
-padding:24px;
+padding:18px;
 box-shadow:0 10px 30px rgba(15,23,42,.08);
 transition:.25s;
 display:flex;
 flex-direction:column;
-gap:10px;
+gap:8px;
 }
 
 .card:hover{
@@ -60,7 +31,7 @@ font-weight:600;
 }
 
 .value{
-font-size:30px;
+font-size:28px;
 font-weight:700;
 line-height:1;
 }
@@ -90,4 +61,30 @@ color:#64748b;
 font-size:12px;
 color:#94a3b8;
 margin-top:auto;
+}
+
+@media (max-height: 820px) and (min-width: 993px) {
+.card{
+padding:14px;
+gap:6px;
+border-radius:14px;
+}
+
+.iconWrapper{
+width:28px;
+height:28px;
+}
+
+.title{
+font-size:12px;
+}
+
+.value{
+font-size:24px;
+}
+
+.trend,
+.description{
+font-size:11px;
+}
 }

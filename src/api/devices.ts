@@ -11,6 +11,7 @@ import type {
   HealSuggestion,
   MetricPoint,
   ProcessItem,
+  ScriptJob,
 } from "@/types/device";
 
 async function fetchJson<T>(url: string, fallback: T): Promise<T> {
@@ -107,4 +108,9 @@ export async function fetchDeviceSuggestions(id: string) {
   );
 
   return suggestions.filter((suggestion) => suggestion.device_id === id);
+}
+
+export async function fetchDeviceScriptJobs(id: string) {
+  const jobs = ensureArray<ScriptJob>(await fetchJson(`${API_URL}/scripts/jobs`, []));
+  return jobs.filter((job) => job.device_id === id);
 }

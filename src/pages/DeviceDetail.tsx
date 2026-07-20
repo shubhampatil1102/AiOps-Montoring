@@ -1,136 +1,138 @@
-﻿import { useParams } from "react-router-dom";
-import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { API_URL } from "@/api/config";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import {
   fetchDevice,
+  fetchDeviceAlerts,
   fetchDeviceCompliance,
   fetchDeviceEvents,
   fetchDeviceHardware,
   fetchDeviceHistory,
   fetchDeviceInventory,
+  fetchDeviceScriptJobs,
+  fetchDeviceSuggestions,
   fetchDeviceTopProcesses,
   fetchDeviceUpdates,
 } from "@/api/devices";
-import "./remediation.css";
-import Spinner from "../components/Spinner";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
-import GlassCard from "../components/GlassCard";
-import { PuzzleIcon } from "lucide-react";
+  useCancelPatchJob,
+  useCreatePatchInstall,
+  useCreatePatchScan,
+  useCreateRebootJob,
+  useDevicePatchHistory,
+  useDevicePatchJobs,
+  useRetryPatchJob,
+} from "@/hooks/usePatch";
+import { useCreateAdHocReboot, useDeviceRebootFacts, useDeviceRebootHistory } from "@/hooks/useReboot";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useMetricAnomalies, useMetricHistory } from "@/hooks/useMetricAnalytics";
+import useIntelligence from "@/hooks/useIntelligence";
+import { adaptAnalyticsHistoryToSeries } from "@/lib/intelligence/adapters";
+import { predictThresholdCrossing, projectValueAtHorizon } from "@/lib/intelligence/predictionEngine";
+import { matchAutomationOpportunity } from "@/lib/intelligence/automationOpportunityEngine";
+import { calculateHealthScore } from "@/lib/intelligence/healthScoreEngine";
+import {
+  buildBatteryConfig,
+  buildOverallHealthComponents,
+  buildPerformanceConfig,
+  buildSecurityConfig,
+  buildStorageConfig,
+  buildUpdatesConfig,
+  deviceHistoryToSeries,
+  normalizeComplianceFlag,
+} from "@/lib/deviceIntelligence/buildDeviceIntelligenceConfig";
+import {
+  calculateRebootHealthValue,
+  evaluateRebootRecommendations,
+  isRebootRecommended,
+  type RebootContext,
+} from "@/lib/deviceIntelligence/rebootIntelligence";
+import DashboardWidget from "@/components/dashboard/DashboardWidget";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge/Badge";
+import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
+import ActivityFeed, { type ActivityItem } from "@/components/common/ActivityFeed";
+import Loading from "@/components/common/Loading";
+import ErrorState from "@/components/common/ErrorState";
+import AreaChart from "@/components/charts/AreaChart";
+import RadarChart from "@/components/charts/RadarChart";
+import DeviceHeader from "@/components/deviceHub/DeviceHeader";
+import DeviceExecutiveSummary from "@/components/deviceHub/DeviceExecutiveSummary";
+import DeviceHealthOverview from "@/components/deviceHub/DeviceHealthOverview";
+import BatteryDetails from "@/components/deviceHub/BatteryDetails";
+import RebootIntelligenceCard from "@/components/deviceHub/RebootIntelligenceCard";
+import { getSeverity } from "@/utils/severity";
+import type {
+  Device,
+  DeviceCompliance,
+  DeviceEvent,
+  DeviceHardware,
+  DeviceInventory,
+  DeviceUpdate,
+  HealSuggestion,
+  MetricPoint,
+  PatchJobStatus,
+  ProcessItem,
+} from "@/types/device";
+import type { Recommendation, RiskSeverity } from "@/lib/intelligence/types";
+import styles from "./DeviceDetail.module.css";
 
-const API = API_URL;
+const IntelligenceCardsSection = lazy(() => import("./deviceDetail/IntelligenceCardsSection"));
+const PredictionsSection = lazy(() => import("./deviceDetail/PredictionsSection"));
+const RecommendationsSection = lazy(() => import("./deviceDetail/RecommendationsSection"));
+const AutomationSection = lazy(() => import("./deviceDetail/AutomationSection"));
 
-type Device = {
-  id: string;
-  cpu?: number | string;
-  ram?: number | string;
-  time?: number;
-};
-
-type MetricPoint = {
-  cpu: number;
-  ram: number;
-  time: number;
-};
-
-type ProcessItem = {
-  name: string;
-  cpu?: number | string;
-  ram?: number | string;
-};
-
-type DeviceEvent = {
-  type: string;
-  message: string;
-  time: number;
-};
-
-type Compliance = {
-  bitlocker?: string | boolean;
-  tpm?: string | boolean;
-  secureboot?: string | boolean;
-  secureBoot?: string | boolean;
-  defender?: string | boolean;
-  updated_at?: number;
-};
-
-type Hardware = {
-  cpu_temp?: number;
-  disk?: number;
-  battery_health?: string;
-  battery_health_percent?: number;
-  fan_status?: string;
-  disk_free?: number;
-  risk?: "LOW" | "MEDIUM" | "HIGH" | string;
-  health_score?: number;
-};
-
-type DeviceUpdate = {
-  windows_update_status?: string;
-  pending_updates?: number | string;
-  failed_updates?: number | string;
-  driver_status?: string;
-  outdated_drivers?: number | string;
-  last_checked?: number;
-};
-
-type InventoryRecord = {
-  updated_at?: number;
-  services_summary?: {
-    auto_running_issue_count?: number;
-    recent_failure_count?: number;
-    auto_stopped?: Array<{
-      name: string;
-      display_name: string;
-      start_mode: string;
-      state: string;
-    }>;
-    recent_failures?: Array<{
-      time: number;
-      id: number;
-      message: string;
-    }>;
-  };
-  drivers_summary?: {
-    problem_count?: number;
-    outdated_count?: number;
-    problems?: Array<{
-      name: string;
-      status?: string;
-      error_code?: number;
-      device_id?: string;
-    }>;
-    outdated?: Array<{
-      device_name?: string;
-      manufacturer?: string;
-      version?: string;
-      driver_date?: string;
-    }>;
-  };
-};
+const PATCH_TERMINAL_STATUSES = new Set<PatchJobStatus>(["COMPLETED", "FAILED", "CANCELLED"]);
+const PATCH_CANCELLABLE_STATUSES = new Set<PatchJobStatus>(["PENDING", "QUEUED", "PREPARING", "DOWNLOADING"]);
 
 function ensureArray<T>(value: unknown): T[] {
-  return Array.isArray(value) ? value : [];
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function patchStatusVariant(status: PatchJobStatus): "success" | "warning" | "danger" | "info" | "default" {
+  if (status === "COMPLETED") return "success";
+  if (status === "FAILED" || status === "CANCELLED") return "danger";
+  if (status === "WAITING_FOR_REBOOT") return "warning";
+  return "info";
+}
+
+function formatPatchAction(action: string) {
+  if (action === "SCAN") return "Update scan";
+  if (action === "INSTALL") return "Update install";
+  if (action === "REBOOT") return "Reboot";
+  return action;
+}
+
+function formatPatchStatus(status: string) {
+  return status.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase());
+}
+
+function mapHealSuggestionToRecommendation(suggestion: HealSuggestion): Recommendation {
+  const severity: RiskSeverity = "Medium";
+
+  return {
+    title: suggestion.alert_type ? suggestion.alert_type.replace(/_/g, " ") : "Recommended action",
+    description: suggestion.reason ?? "Issue detected by AI health analysis.",
+    reason: suggestion.reason ?? "Detected from live device telemetry.",
+    expectedBenefit: "Resolves the detected issue.",
+    estimatedImpact: severity,
+    // heal_suggestions doesn't carry its own confidence score — 0.65 reflects
+    // "a real detected issue, moderate default confidence," not a fabricated number.
+    confidence: 0.65,
+    suggestedAction: suggestion.suggested_action ?? suggestion.script ?? "Review manually.",
+    category: suggestion.alert_type ?? "General",
+    severity,
+    relatedMetric: suggestion.alert_type ?? "general",
+  };
 }
 
 export default function DeviceDetail() {
   const { id = "" } = useParams<{ id: string }>();
-  const [range, setRange] = useState("1h");
+  const [range, setRange] = useState<"1h" | "1d" | "1w">("1h");
   const [updateActionMessage, setUpdateActionMessage] = useState("");
 
-  const {
-    data: device,
-    isLoading: isDeviceLoading,
-    isError: isDeviceError,
-  } = useQuery<Device>({
+  const { data: device, isLoading: isDeviceLoading, isError: isDeviceError } = useQuery<Device>({
     queryKey: ["device", id],
     queryFn: () => fetchDevice(id),
     refetchInterval: 5000,
@@ -151,494 +153,745 @@ export default function DeviceDetail() {
     enabled: !!id,
   });
 
-  const { data: events = [], refetch: refetchEvents } = useQuery<DeviceEvent[]>({
+  const { data: events = [] } = useQuery<DeviceEvent[]>({
     queryKey: ["events", id],
     queryFn: () => fetchDeviceEvents(id),
     refetchInterval: 5000,
     enabled: !!id,
   });
 
-  const { data: compliance = {} } = useQuery<Compliance>({
+  const { data: compliance = {} } = useQuery<DeviceCompliance>({
     queryKey: ["compliance", id],
     queryFn: () => fetchDeviceCompliance(id),
     refetchInterval: 4000,
-    enabled: !!id
+    enabled: !!id,
   });
 
-  const { data: hardware = {} } = useQuery<Hardware>({
+  const { data: hardware = {} } = useQuery<DeviceHardware>({
     queryKey: ["hardware", id],
     queryFn: () => fetchDeviceHardware(id),
     refetchInterval: 4000,
-    enabled: !!id
+    enabled: !!id,
   });
 
-  const { data: update = {}, refetch: refetchUpdate } = useQuery<DeviceUpdate>({
+  const { data: update = {} } = useQuery<DeviceUpdate>({
     queryKey: ["update", id],
     queryFn: () => fetchDeviceUpdates(id),
     refetchInterval: 4000,
-    enabled: !!id
+    enabled: !!id,
   });
 
-  const { data: inventory = {} } = useQuery<InventoryRecord>({
+  const { data: inventory = {} } = useQuery<DeviceInventory>({
     queryKey: ["inventory", id],
     queryFn: () => fetchDeviceInventory(id),
     refetchInterval: 5000,
-    enabled: !!id
+    enabled: !!id,
   });
 
-  const runDeviceScript = useMutation({
-    mutationFn: async ({ script, successMessage }: { script: string; successMessage: string }) => {
-      const res = await fetch(`${API}/scripts/run`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          device_id: id,
-          script
-        })
-      });
+  const { data: alerts = [] } = useQuery({
+    queryKey: ["device-alerts", id],
+    queryFn: () => fetchDeviceAlerts(id),
+    refetchInterval: 5000,
+    enabled: !!id,
+  });
 
-      if (!res.ok) {
-        throw new Error("Failed to queue device action");
-      }
+  const { data: suggestions = [] } = useQuery({
+    queryKey: ["device-suggestions", id],
+    queryFn: () => fetchDeviceSuggestions(id),
+    refetchInterval: 10000,
+    enabled: !!id,
+  });
 
-      return { ...(await res.json()), successMessage };
-    },
-    onSuccess: async (data) => {
-      setUpdateActionMessage(data.successMessage);
-      await Promise.all([refetchUpdate(), refetchEvents()]);
-    },
-    onError: (error) => {
-      setUpdateActionMessage(
-        error instanceof Error ? error.message : "Unable to start the device action"
+  const { data: scriptJobs = [] } = useQuery({
+    queryKey: ["device-script-jobs", id],
+    queryFn: () => fetchDeviceScriptJobs(id),
+    refetchInterval: 10000,
+    enabled: !!id,
+  });
+
+  // Fetched once per metric, shared across the Intelligence Card, Prediction,
+  // and detail chart that each need it — avoids duplicate network calls.
+  const { data: batteryHistory = [] } = useMetricHistory(id, "battery_health_percent", "1w");
+  const { data: diskHistory = [] } = useMetricHistory(id, "disk", "1w");
+  const { data: batteryAnomalies = [] } = useMetricAnomalies(id, "battery_health_percent", "1w");
+  const { data: diskAnomalies = [] } = useMetricAnomalies(id, "disk", "1w");
+  const { data: cpuAnomalies = [] } = useMetricAnomalies(id, "cpu", "1w");
+
+  const { can } = usePermissions();
+  const canExecutePatch = can("devices", "execute");
+
+  const { data: patchJobs = [] } = useDevicePatchJobs(id);
+  const { data: patchHistory = [] } = useDevicePatchHistory(id);
+  const latestPatchJob = patchJobs[0];
+  const isPatchJobActive = Boolean(
+    latestPatchJob && !PATCH_TERMINAL_STATUSES.has(latestPatchJob.status)
+  );
+
+  const createScan = useCreatePatchScan(id);
+  const createInstall = useCreatePatchInstall(id);
+  const cancelPatchJobMutation = useCancelPatchJob(id);
+  const retryPatchJobMutation = useRetryPatchJob(id);
+  const createReboot = useCreateRebootJob(id);
+  const createAdHocReboot = useCreateAdHocReboot(id);
+  const [isRebootConfirmOpen, setIsRebootConfirmOpen] = useState(false);
+
+  const { data: rebootFacts } = useDeviceRebootFacts(id);
+  const { data: rebootHistory = [] } = useDeviceRebootHistory(id);
+
+  const daysSinceRestart = useMemo(() => {
+    if (!rebootFacts?.boot_time) return undefined;
+    return Math.max(0, (Date.now() - Number(rebootFacts.boot_time)) / 86400000);
+  }, [rebootFacts?.boot_time]);
+
+  const rebootContext = useMemo<RebootContext | null>(() => {
+    if (!rebootFacts || daysSinceRestart === undefined) return null;
+    return {
+      daysSinceRestart,
+      maxUptimeDays: rebootFacts.max_uptime_days,
+      registryRebootPending: Boolean(rebootFacts.registry_reboot_pending),
+      windowsUpdatePending: Number(rebootFacts.pending_updates ?? 0) > 0,
+      deviceClass: rebootFacts.device_class,
+    };
+  }, [rebootFacts, daysSinceRestart]);
+
+  const rebootHealthScore = useMemo(() => {
+    if (!rebootContext) return calculateHealthScore([]);
+    return calculateHealthScore([
+      {
+        label: "Reboot",
+        value: calculateRebootHealthValue(
+          rebootContext.daysSinceRestart,
+          rebootContext.registryRebootPending,
+          rebootContext.windowsUpdatePending
+        ),
+        weight: 1,
+      },
+    ]);
+  }, [rebootContext]);
+
+  const rebootRecommendations = useMemo(
+    () => (rebootContext ? evaluateRebootRecommendations(rebootContext) : []),
+    [rebootContext]
+  );
+
+  const topRebootRecommendation = useMemo(
+    () => [...rebootRecommendations].sort((a, b) => b.confidence - a.confidence)[0],
+    [rebootRecommendations]
+  );
+
+  const rebootSafety = useMemo(() => {
+    const reasons: string[] = [];
+    let isSafe = true;
+
+    const cpuLoad = Number(device?.cpu ?? 0);
+    const ramLoad = Number(device?.ram ?? 0);
+    if (cpuLoad > 70 || ramLoad > 85) {
+      reasons.push(
+        `Current load is elevated (CPU ${cpuLoad.toFixed(0)}%, RAM ${ramLoad.toFixed(0)}%) — the device may be in active use.`
       );
+      isSafe = false;
     }
-  });
+
+    const hour = new Date().getHours();
+    const businessHours = hour >= 9 && hour < 18;
+    if (businessHours) {
+      reasons.push(
+        "Currently within typical business hours (9 AM-6 PM, based on the admin's local clock) — consider waiting for a maintenance window."
+      );
+      isSafe = false;
+    } else {
+      reasons.push("Outside typical business hours — a reasonable time to restart.");
+    }
+
+    if (device?.state !== "ONLINE") {
+      reasons.push("Device is currently offline — the restart will be applied once it reconnects.");
+    }
+
+    return { isSafe, reasons };
+  }, [device?.state, device?.cpu, device?.ram]);
+
+  const showSmartRestart = Boolean(
+    (rebootContext && isRebootRecommended(rebootContext)) || latestPatchJob?.status === "WAITING_FOR_REBOOT"
+  );
+
+  function queueWindowsUpdateScan() {
+    createScan.mutate(undefined, {
+      onError: () => setUpdateActionMessage("Unable to start update scan."),
+    });
+  }
+
+  function queueWindowsUpdateInstall() {
+    createInstall.mutate(undefined, {
+      onError: () => setUpdateActionMessage("Unable to start update install."),
+    });
+  }
+
+  function handleCancelPatchJob(jobId: number) {
+    cancelPatchJobMutation.mutate(jobId, {
+      onError: () => setUpdateActionMessage("Unable to cancel — the job may already be past the point where it can be stopped."),
+    });
+  }
+
+  function handleRetryPatchJob(jobId: number) {
+    retryPatchJobMutation.mutate(jobId, {
+      onError: () => setUpdateActionMessage("Unable to retry this job."),
+    });
+  }
+
+  function handleConfirmReboot() {
+    if (latestPatchJob?.status === "WAITING_FOR_REBOOT") {
+      createReboot.mutate(latestPatchJob.id, {
+        onSuccess: () => setIsRebootConfirmOpen(false),
+        onError: () => setUpdateActionMessage("Unable to queue the reboot."),
+      });
+      return;
+    }
+
+    createAdHocReboot.mutate(undefined, {
+      onSuccess: () => setIsRebootConfirmOpen(false),
+      onError: () => setUpdateActionMessage("Unable to queue the reboot."),
+    });
+  }
+
+  const cpuSeries = useMemo(() => deviceHistoryToSeries(history, "cpu"), [history]);
+  const ramSeries = useMemo(() => deviceHistoryToSeries(history, "ram"), [history]);
+  const batterySeries = useMemo(() => adaptAnalyticsHistoryToSeries(batteryHistory), [batteryHistory]);
+  const diskSeries = useMemo(() => adaptAnalyticsHistoryToSeries(diskHistory), [diskHistory]);
+
+  const performanceConfig = useMemo(
+    () => buildPerformanceConfig(device ?? ({} as Device), cpuSeries),
+    [device, cpuSeries]
+  );
+  const batteryConfig = useMemo(() => buildBatteryConfig(hardware, batterySeries), [hardware, batterySeries]);
+  const storageConfig = useMemo(() => buildStorageConfig(hardware, diskSeries), [hardware, diskSeries]);
+  const securityConfig = useMemo(() => buildSecurityConfig(compliance), [compliance]);
+  const updatesConfig = useMemo(() => buildUpdatesConfig(update), [update]);
+
+  const performance = useIntelligence(performanceConfig);
+  const battery = useIntelligence(batteryConfig);
+  const storage = useIntelligence(storageConfig);
+  const security = useIntelligence(securityConfig);
+  const updates = useIntelligence(updatesConfig);
+
+  const ramPrediction = useMemo(
+    () => predictThresholdCrossing(ramSeries, 95, "above", { metric: "ram" }),
+    [ramSeries]
+  );
+
+  const batteryProjections = useMemo(
+    () => [30, 90, 180, 365].map((days) => projectValueAtHorizon(batterySeries, days, { metric: "battery_health_percent" })),
+    [batterySeries]
+  );
+
+  const batteryReplacementApproaching = useMemo(() => {
+    const { insufficientData, predictedDate } = battery.prediction;
+    if (insufficientData || !predictedDate) return false;
+    return predictedDate - Date.now() < 30 * 24 * 60 * 60 * 1000;
+  }, [battery.prediction]);
+
+  const overallComponents = useMemo(
+    () => buildOverallHealthComponents(device ?? ({} as Device), hardware, compliance, update),
+    [device, hardware, compliance, update]
+  );
+  const overallScore = useMemo(() => calculateHealthScore(overallComponents).score, [overallComponents]);
+
+  const recommendations = useMemo(() => {
+    // heal_suggestions accumulates for the lifetime of a device with no
+    // retention — show only the most recent, like every other list in this
+    // app (ActivityFeed limits to 15, Dashboard's activity feed slices to 15).
+    const recentSuggestions = [...suggestions]
+      .sort((a, b) => Number(b.created_at ?? 0) - Number(a.created_at ?? 0))
+      .slice(0, 15);
+
+    const fromSuggestions = recentSuggestions.map(mapHealSuggestionToRecommendation);
+    const fromPipeline = [
+      ...performance.recommendations,
+      ...battery.recommendations,
+      ...storage.recommendations,
+      ...security.recommendations,
+      ...updates.recommendations,
+    ];
+    return [...fromSuggestions, ...fromPipeline, ...rebootRecommendations];
+  }, [suggestions, performance, battery, storage, security, updates, rebootRecommendations]);
+
+  const automations = useMemo(() => {
+    const fromPipeline = [
+      ...performance.automationOpportunities,
+      ...battery.automationOpportunities,
+      ...storage.automationOpportunities,
+      ...security.automationOpportunities,
+      ...updates.automationOpportunities,
+    ];
+
+    const hasStoppedService = (inventory.services_summary?.auto_running_issue_count ?? 0) > 0;
+    const serviceOpportunity = hasStoppedService ? matchAutomationOpportunity("service-down") : null;
+
+    return serviceOpportunity ? [...fromPipeline, serviceOpportunity] : fromPipeline;
+  }, [performance, battery, storage, security, updates, inventory]);
+
+  const securityRadarData = useMemo(
+    () => [
+      { axis: "BitLocker", value: normalizeComplianceFlag(compliance.bitlocker) ? 100 : 0 },
+      { axis: "TPM", value: normalizeComplianceFlag(compliance.tpm) ? 100 : 0 },
+      {
+        axis: "Secure Boot",
+        value: normalizeComplianceFlag(compliance.secureboot ?? compliance.secureBoot) ? 100 : 0,
+      },
+      { axis: "Defender", value: normalizeComplianceFlag(compliance.defender) ? 100 : 0 },
+    ],
+    [compliance]
+  );
+
+  const activityItems: ActivityItem[] = useMemo(() => {
+    const eventItems: ActivityItem[] = events.map((e) => ({
+      id: `event-${e.time}`,
+      message: e.message,
+      time: Number(e.time),
+      severityLabel: getSeverity(e.message).label,
+    }));
+
+    const alertItems: ActivityItem[] = alerts.map((a) => ({
+      id: `alert-${a.time}`,
+      message: a.message,
+      time: Number(a.time),
+      severityLabel: getSeverity(a.message).label,
+    }));
+
+    const anomalyItems: ActivityItem[] = [
+      ...batteryAnomalies.map((a) => ({ ...a, metricLabel: "Battery health" })),
+      ...diskAnomalies.map((a) => ({ ...a, metricLabel: "Disk usage" })),
+      ...cpuAnomalies.map((a) => ({ ...a, metricLabel: "CPU usage" })),
+    ].map((a) => ({
+      id: `anomaly-${a.metricLabel}-${a.detected_at}`,
+      message: `Anomalous ${a.metricLabel.toLowerCase()}: ${a.value.toFixed(1)}`,
+      time: Number(a.detected_at),
+      severityLabel: "WARNING",
+    }));
+
+    const scriptItems: ActivityItem[] = scriptJobs.map((job) => ({
+      id: `script-${job.id}`,
+      message: `Script ${job.status?.toLowerCase() ?? "queued"}: ${(job.script ?? "").slice(0, 60) || "unnamed script"}`,
+      time: Number(job.created_at ?? 0),
+      severityLabel: job.status === "FAILED" ? "CRITICAL" : job.status === "SUCCESS" ? "INFO" : "WARNING",
+    }));
+
+    return [...eventItems, ...alertItems, ...anomalyItems, ...scriptItems].sort((a, b) => b.time - a.time);
+  }, [events, alerts, batteryAnomalies, diskAnomalies, cpuAnomalies, scriptJobs]);
 
   if (!id) {
     return (
-      <div style={{ padding: 40 }}>
-        <h2>Device ID not provided</h2>
-        <p>Please select a device from the Devices list.</p>
+      <div className={styles.page}>
+        <ErrorState message="Device ID not provided. Please select a device from the Devices list." />
       </div>
     );
   }
 
   if (isDeviceLoading) {
-    return <Spinner label="Loading device details..." />;
-  }
-
-  if (isDeviceError) {
     return (
-      <div style={{ padding: 40 }}>
-        <h2>Unable to load device details</h2>
-        <p>There was a problem fetching the device information. Please try again.</p>
+      <div className={styles.page}>
+        <Loading label="Loading device details..." />
       </div>
     );
   }
 
-  if (!device || !device.id) {
+  if (isDeviceError || !device || !device.id) {
     return (
-      <div style={{ padding: 40 }}>
-        <h2>Device not found</h2>
-        <p>Check that the selected device exists and try again.</p>
+      <div className={styles.page}>
+        <ErrorState message="Unable to load device details. Check that the selected device exists and try again." />
       </div>
     );
   }
-
-  function queueWindowsUpdateScan() {
-    runDeviceScript.mutate({
-      successMessage: "Update scan queued on the client machine.",
-      script: `
-$ErrorActionPreference = "Stop"
-if (Get-Module -ListAvailable -Name PSWindowsUpdate) {
-  Import-Module PSWindowsUpdate
-  Get-WindowsUpdate -MicrosoftUpdate -IgnoreUserInput -AcceptAll | Out-String
-} else {
-  UsoClient StartScan
-  "Triggered Windows Update scan using UsoClient."
-}
-      `.trim()
-    });
-  }
-
-  function queueWindowsUpdateInstall() {
-    runDeviceScript.mutate({
-      successMessage: "Update install action queued on the client machine.",
-      script: `
-$ErrorActionPreference = "Stop"
-if (Get-Module -ListAvailable -Name PSWindowsUpdate) {
-  Import-Module PSWindowsUpdate
-  Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot -Confirm:$false | Out-String
-} else {
-  UsoClient StartDownload
-  Start-Sleep -Seconds 5
-  UsoClient StartInstall
-  "Triggered Windows Update download and install using UsoClient."
-}
-      `.trim()
-    });
-  }
-
-
-
 
   return (
-    <div
-      className="remediation-scroll"
-      style={{
-        display: "grid",
-        gap: 16,
-        minHeight: "calc(100vh - 40px)",
-        overflowX: "hidden",
-        overflowY: "auto",
-        paddingRight: 6,
-      }}
-    >
-      <div>
-        <h1 style={{ fontSize: 24, fontWeight: 700 }}>Device: {id}</h1>
-        <div style={{ color: "#64748b", fontSize: 14 }}>
-          Full device health, compliance, and remediation tooling in the same page theme.
+    <div className={styles.page}>
+      <DeviceHeader
+        deviceId={device.id}
+        state={device.state}
+        lastSeen={device.last_seen ?? device.time}
+        healthScore={overallScore}
+        onScanUpdates={queueWindowsUpdateScan}
+        onInstallUpdates={queueWindowsUpdateInstall}
+        isActionPending={createScan.isPending || createInstall.isPending || !canExecutePatch}
+      />
+
+      {updateActionMessage && (
+        <Card fill>
+          <div>{updateActionMessage}</div>
+        </Card>
+      )}
+
+      <RebootIntelligenceCard
+        facts={rebootFacts ?? undefined}
+        daysSinceRestart={daysSinceRestart}
+        healthScore={rebootHealthScore}
+        recommendation={topRebootRecommendation}
+        historyEntries={rebootHistory}
+        isSafeToRestart={rebootSafety.isSafe}
+        safetyReasons={rebootSafety.reasons}
+        showSmartRestart={showSmartRestart}
+        canExecute={canExecutePatch}
+        isRestartPending={createReboot.isPending || createAdHocReboot.isPending}
+        onSmartRestart={() => setIsRebootConfirmOpen(true)}
+      />
+
+      <div className={styles.topRow}>
+        <div className={styles.overview}>
+          <DeviceHealthOverview components={overallComponents} />
+        </div>
+
+        <div className={styles.summary}>
+          <DeviceExecutiveSummary
+            performanceTrend={performance.trend}
+            batteryHealth={battery.healthScore}
+            diskUsagePercent={hardware.disk !== undefined ? Number(hardware.disk) : undefined}
+            pendingUpdates={Number(update.pending_updates ?? 0)}
+            openAlertsCount={alerts.filter((a) => !a.resolved).length}
+            hasData={Boolean(device)}
+          />
         </div>
       </div>
 
-      {/* Info */}
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-          gap: 16,
-        }}
-      >
-
-        {/* <Info title="CPU" value={`${device?.cpu?.toFixed(1) ?? 0}%`} />
-        <Info title="RAM" value={`${device?.ram?.toFixed(1) ?? 0}%`} /> */}
-
-        <Info
-          title="CPU"
-          value={`${Number(device?.cpu ?? 0).toFixed(1)}%`}
-        />
-
-        <Info
-          title="RAM"
-          value={`${Number(device?.ram ?? 0).toFixed(1)}%`}
-        />
-        <Info
-          title="Status"
-          value={Date.now() - (device?.time ?? 0) < 20000 ? "ONLINE" : "OFFLINE"}
-          color={Date.now() - (device?.time ?? 0) < 20000 ? "#22c55e" : "#ef4444"}
-        />
-      </div>
-      <GlassCard>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <PuzzleIcon />
-          <h4 style={{ fontWeight: 600, fontSize: 19 }}>Activity monitor </h4>
-        </div>
-
-
-        {/* Range */}
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-          {["1h", "1d", "1w"].map((value) => (
-            <button
-              key={value}
-              onClick={() => setRange(value)}
-              style={{
-                padding: "10px 16px",
-                borderRadius: 8,
-                background: range === value ? "#38fc80" : "#d1fae5",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              {value.toUpperCase()}
-            </button>
-          ))}
-        </div>
-
-        {/* Charts */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
-            gap: 12,
-            fontSize: 12,
-          }}
-        >
-          <Chart title="CPU Usage %" data={history} dataKey="cpu" color="#22c55e" />
-          <Chart title="RAM Usage %" data={history} dataKey="ram" color="#3b82f6" />
-        </div>
-      </GlassCard>
-      <GlassCard style={{ marginTop: 5 }}>
-        <div>
-          <h3>Security Compliance</h3>
-
-          {!compliance && <div>Loading...</div>}
-
-          {compliance && (
-            <>
-              <StatusRow label="Bitlocker" value={compliance.bitlocker} />
-              <StatusRow label="TPM" value={compliance.tpm} />
-              <StatusRow
-                label="Secure Boot"
-                value={compliance.secureboot ?? compliance.secureBoot}
-              />
-              <StatusRow label="Windows Defender" value={compliance.defender} />
-
-              <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>
-                Last checked: {
-                  compliance.updated_at
-                    ? new Date(Number(compliance.updated_at)).toLocaleString()
-                    : "-"
-                }
-              </div>
-            </>
-          )}
-        </div>
-      </GlassCard>
-
-      <GlassCard>
-        <h3>Hardware Health AI</h3>
-
-        <StatusRow label="CPU Temp"
-          value={hardware?.cpu_temp}
-          displayValue={hardware?.cpu_temp !== undefined ? `${hardware.cpu_temp} "°C"` : "--"} />
-
-        <StatusRow label="Disk Usage"
-          value={hardware?.disk}
-          displayValue={hardware?.disk !== undefined ? `${hardware.disk} %` : "--"} />
-
-        <StatusRow label="Battery Health"
-          value={hardware?.battery_health}
-          displayValue={`${hardware?.battery_health ?? "--"} ${hardware?.battery_health_percent ? `(${hardware.battery_health_percent}%)` : ""}`} />
-        <StatusRow label="Fan Speed"
-          value={hardware?.fan_status}
-          displayValue={hardware?.fan_status ?? "--"} />
-        <StatusRow label="Free Disk Space"
-          value={hardware?.disk_free}
-          displayValue={`C Drive : ${hardware?.disk_free ?? "--"} GB`} />
-
-        <div style={{
-          marginTop: 15,
-          fontSize: 18,
-          fontWeight: 600,
-          color:
-            hardware?.risk === "LOW" ? "#22c55e" :
-              hardware?.risk === "MEDIUM" ? "#f59e0b" :
-                "#ef4444"
-        }}>
-          AI Health Score : {hardware?.health_score ?? "--"}/100
-        </div>
-
-      </GlassCard>
-      <GlassCard>
-        <h3 style={{ marginBottom: 5 }}>System Updates & Drivers</h3>
-
-        <StatusRow
-          label="Windows Update"
-          value={update?.windows_update_status}
-          onFix={queueWindowsUpdateScan}
-        />
-
-        <StatusRow
-          label="Pending Updates"
-          value={update?.pending_updates}
-          displayValue={String(update?.pending_updates ?? "--")}
-          onFix={queueWindowsUpdateInstall}
-        />
-
-        <StatusRow
-          label="Failed Updates"
-          value={update?.failed_updates}
-          displayValue={String(update?.failed_updates ?? "--")}
-          onFix={queueWindowsUpdateInstall}
-        />
-
-        <StatusRow
-          label="Driver Health"
-          value={update?.driver_status}
-        />
-
-        <StatusRow
-          label="Outdated Drivers"
-          value={update?.outdated_drivers}
-          displayValue={String(update?.outdated_drivers ?? "--")}
-        />
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-          <button
-            onClick={queueWindowsUpdateScan}
-            disabled={runDeviceScript.isPending}
-            style={updateButton("#0f766e")}
-          >
-            {runDeviceScript.isPending ? "Queueing..." : "Check for Updates"}
-          </button>
-
-          <button
-            onClick={queueWindowsUpdateInstall}
-            disabled={runDeviceScript.isPending}
-            style={updateButton("#2563eb")}
-          >
-            {runDeviceScript.isPending ? "Queueing..." : "Install Pending Updates"}
-          </button>
-        </div>
-
-        {updateActionMessage && (
-          <div style={{ marginTop: 10, fontSize: 13, color: "#475569" }}>
-            {updateActionMessage}
+      <h2 className={styles.sectionHeading}>Intelligence Services</h2>
+      <Suspense
+        fallback={
+          <div className={styles.lazyFallback}>
+            <Loading label="Loading intelligence cards..." />
           </div>
-        )}
+        }
+      >
+        <IntelligenceCardsSection
+          performance={performance}
+          battery={battery}
+          storage={storage}
+          security={security}
+          updates={updates}
+        />
+      </Suspense>
 
-        <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>
-          Last checked: {update?.last_checked ? new Date(Number(update.last_checked)).toLocaleString() : "-"}
+      <h2 className={styles.sectionHeading}>Predictions</h2>
+      <Suspense
+        fallback={
+          <div className={styles.lazyFallback}>
+            <Loading label="Loading predictions..." />
+          </div>
+        }
+      >
+        <PredictionsSection
+          battery={{ series: batterySeries, prediction: battery.prediction }}
+          disk={{ series: diskSeries, prediction: storage.prediction }}
+          cpu={{ series: cpuSeries, prediction: performance.prediction }}
+          ram={{ series: ramSeries, prediction: ramPrediction }}
+          updatesRisk={updates.risk}
+        />
+      </Suspense>
+
+      <h2 className={styles.sectionHeading}>Recommendations</h2>
+      <Suspense
+        fallback={
+          <div className={styles.lazyFallback}>
+            <Loading label="Loading recommendations..." />
+          </div>
+        }
+      >
+        <RecommendationsSection recommendations={recommendations} />
+      </Suspense>
+
+      <h2 className={styles.sectionHeading}>Automation Suggestions</h2>
+      <Suspense
+        fallback={
+          <div className={styles.lazyFallback}>
+            <Loading label="Loading automation suggestions..." />
+          </div>
+        }
+      >
+        <AutomationSection automations={automations} />
+      </Suspense>
+
+      <ActivityFeed
+        title="Health Timeline"
+        subtitle="Device events, alerts, anomalies, and automation history"
+        items={activityItems}
+        emptyMessage="No recent activity for this device."
+      />
+
+      <h2 className={styles.sectionHeading}>Device Detail</h2>
+
+      <DashboardWidget
+        title="Activity Monitor"
+        subtitle="Live CPU, memory, and disk trend"
+        toolbar={
+          <div className={styles.rangeBar}>
+            {(["1h", "1d", "1w"] as const).map((value) => (
+              <button
+                key={value}
+                onClick={() => setRange(value)}
+                className={`${styles.rangeButton} ${range === value ? styles.rangeButtonActive : ""}`}
+              >
+                {value.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        <div className={styles.chartsGrid}>
+          <AreaChart title="CPU Usage" data={cpuSeries} color="#22c55e" />
+          <AreaChart title="RAM Usage" data={ramSeries} color="#3b82f6" />
+          <AreaChart title="Disk Usage" data={diskSeries} color="#f59e0b" />
         </div>
+      </DashboardWidget>
 
-      </GlassCard>
+      <div className={styles.detailGrid}>
+        <BatteryDetails
+          batteryHealthPercent={hardware.battery_health_percent !== undefined ? Number(hardware.battery_health_percent) : undefined}
+          healthScore={battery.healthScore}
+          trend={battery.trend}
+          updatedAt={hardware.updated_at}
+          projections={batteryProjections}
+          replacementApproaching={batteryReplacementApproaching}
+        />
+      </div>
 
-      <GlassCard>
-        <h3 style={{ marginBottom: 8 }}>Windows Services & Drivers</h3>
+      <div className={styles.detailGrid}>
+        <DashboardWidget title="Security Compliance">
+          <StatusRow label="Bitlocker" value={compliance.bitlocker} />
+          <StatusRow label="TPM" value={compliance.tpm} />
+          <StatusRow label="Secure Boot" value={compliance.secureboot ?? compliance.secureBoot} />
+          <StatusRow label="Windows Defender" value={compliance.defender} />
+          <div className={styles.footNote}>
+            Last checked: {compliance.updated_at ? new Date(Number(compliance.updated_at)).toLocaleString() : "-"}
+          </div>
+        </DashboardWidget>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
-            gap: 12,
-            marginBottom: 16
-          }}
-        >
+        <DashboardWidget title="Security Posture">
+          <RadarChart data={securityRadarData} color="#7c3aed" />
+        </DashboardWidget>
+      </div>
+
+      <div className={styles.detailGrid}>
+        <DashboardWidget title="Hardware Health">
+          <StatusRow
+            label="CPU Temp"
+            value={hardware.cpu_temp}
+            displayValue={hardware.cpu_temp !== undefined ? `${hardware.cpu_temp} °C` : "--"}
+          />
+          <StatusRow
+            label="Disk Usage"
+            value={hardware.disk}
+            displayValue={hardware.disk !== undefined ? `${hardware.disk} %` : "--"}
+          />
+          <StatusRow
+            label="Battery Health"
+            value={hardware.battery_health}
+            displayValue={`${hardware.battery_health ?? "--"} ${hardware.battery_health_percent ? `(${hardware.battery_health_percent}%)` : ""}`}
+          />
+          <StatusRow label="Fan Speed" value={hardware.fan_status} displayValue={hardware.fan_status ?? "--"} />
+          <StatusRow
+            label="Free Disk Space"
+            value={hardware.disk_free}
+            displayValue={`C Drive: ${hardware.disk_free ?? "--"} GB`}
+          />
+
+          <div className={styles.footNote}>AI Health Score: {hardware.health_score ?? "--"}/100</div>
+        </DashboardWidget>
+
+        <DashboardWidget title="System Updates & Drivers">
+          {latestPatchJob && (
+            <div className={styles.patchJobCard}>
+              <div className={styles.patchJobHeader}>
+                <Badge variant={patchStatusVariant(latestPatchJob.status)}>
+                  {formatPatchAction(latestPatchJob.action)} · {formatPatchStatus(latestPatchJob.status)}
+                </Badge>
+                {isPatchJobActive && latestPatchJob.percent_complete !== undefined && latestPatchJob.percent_complete !== null && (
+                  <span className={styles.footNote}>{latestPatchJob.percent_complete}%</span>
+                )}
+              </div>
+
+              {latestPatchJob.current_step_detail && (
+                <div className={styles.footNote}>{latestPatchJob.current_step_detail}</div>
+              )}
+
+              {canExecutePatch && (
+                <div className={styles.patchJobActions}>
+                  {PATCH_CANCELLABLE_STATUSES.has(latestPatchJob.status) && (
+                    <button
+                      className={styles.repairButton}
+                      onClick={() => handleCancelPatchJob(latestPatchJob.id)}
+                      disabled={cancelPatchJobMutation.isPending}
+                    >
+                      Cancel
+                    </button>
+                  )}
+
+                  {latestPatchJob.status === "WAITING_FOR_REBOOT" && (
+                    <button className={styles.repairButton} onClick={() => setIsRebootConfirmOpen(true)}>
+                      Reboot Now
+                    </button>
+                  )}
+
+                  {latestPatchJob.status === "FAILED" && (
+                    <button
+                      className={styles.repairButton}
+                      onClick={() => handleRetryPatchJob(latestPatchJob.id)}
+                      disabled={retryPatchJobMutation.isPending}
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <StatusRow label="Windows Update" value={update.windows_update_status} onFix={canExecutePatch ? queueWindowsUpdateScan : undefined} />
+          <StatusRow
+            label="Pending Updates"
+            value={update.pending_updates}
+            displayValue={String(update.pending_updates ?? "--")}
+            onFix={canExecutePatch ? queueWindowsUpdateInstall : undefined}
+          />
+          <StatusRow
+            label="Failed Updates"
+            value={update.failed_updates}
+            displayValue={String(update.failed_updates ?? "--")}
+            onFix={canExecutePatch ? queueWindowsUpdateInstall : undefined}
+          />
+          <StatusRow label="Driver Health" value={update.driver_status} />
+          <StatusRow
+            label="Outdated Drivers"
+            value={update.outdated_drivers}
+            displayValue={String(update.outdated_drivers ?? "--")}
+          />
+
+          <div className={styles.footNote}>
+            Last checked: {update.last_checked ? new Date(Number(update.last_checked)).toLocaleString() : "-"}
+          </div>
+
+          {patchHistory.length > 0 && (
+            <div className={styles.patchHistoryList}>
+              <div className={styles.issueTitle}>Recent Patch Activity</div>
+              {patchHistory.slice(0, 5).map((entry) => (
+                <div key={entry.id} className={styles.patchHistoryItem}>
+                  <Badge variant={patchStatusVariant(entry.status)}>{formatPatchAction(entry.action)}</Badge>
+                  <span>{formatPatchStatus(entry.status)}</span>
+                  <span className={styles.footNote}>{new Date(entry.occurred_at).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </DashboardWidget>
+      </div>
+
+      <Modal
+        isOpen={isRebootConfirmOpen}
+        onClose={() => setIsRebootConfirmOpen(false)}
+        titleId="reboot-confirm-title"
+        title="Reboot this device now?"
+      >
+        <p className={styles.footNote}>
+          {latestPatchJob?.status === "WAITING_FOR_REBOOT"
+            ? "The device has updates waiting on a restart to finish installing."
+            : "This device is recommended for a restart based on current uptime and reboot-health signals."}{" "}
+          This will restart <strong>{device.id}</strong> immediately — make sure the user has saved their work.
+        </p>
+        <div className={styles.patchJobActions}>
+          <Button type="button" variant="secondary" onClick={() => setIsRebootConfirmOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            onClick={handleConfirmReboot}
+            disabled={createReboot.isPending || createAdHocReboot.isPending}
+          >
+            {createReboot.isPending || createAdHocReboot.isPending ? "Rebooting..." : "Reboot Now"}
+          </Button>
+        </div>
+      </Modal>
+
+      <DashboardWidget title="Windows Services & Drivers">
+        <div className={styles.miniStatGrid}>
           <MiniStat
             title="Auto Services Stopped"
-            value={inventory?.services_summary?.auto_running_issue_count ?? 0}
-            color={(inventory?.services_summary?.auto_running_issue_count ?? 0) > 0 ? "#f59e0b" : "#22c55e"}
+            value={inventory.services_summary?.auto_running_issue_count ?? 0}
+            color={(inventory.services_summary?.auto_running_issue_count ?? 0) > 0 ? "#f59e0b" : "#22c55e"}
           />
           <MiniStat
             title="Recent Service Failures"
-            value={inventory?.services_summary?.recent_failure_count ?? 0}
-            color={(inventory?.services_summary?.recent_failure_count ?? 0) > 0 ? "#ef4444" : "#22c55e"}
+            value={inventory.services_summary?.recent_failure_count ?? 0}
+            color={(inventory.services_summary?.recent_failure_count ?? 0) > 0 ? "#ef4444" : "#22c55e"}
           />
           <MiniStat
             title="Driver Problems"
-            value={inventory?.drivers_summary?.problem_count ?? 0}
-            color={(inventory?.drivers_summary?.problem_count ?? 0) > 0 ? "#ef4444" : "#22c55e"}
+            value={inventory.drivers_summary?.problem_count ?? 0}
+            color={(inventory.drivers_summary?.problem_count ?? 0) > 0 ? "#ef4444" : "#22c55e"}
           />
           <MiniStat
             title="Outdated Drivers"
-            value={inventory?.drivers_summary?.outdated_count ?? 0}
-            color={(inventory?.drivers_summary?.outdated_count ?? 0) > 0 ? "#f59e0b" : "#22c55e"}
+            value={inventory.drivers_summary?.outdated_count ?? 0}
+            color={(inventory.drivers_summary?.outdated_count ?? 0) > 0 ? "#f59e0b" : "#22c55e"}
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
-            gap: 1,
-            fontSize: 12,
-
-
-          }}
-        >
+        <div className={styles.issueGrid}>
           <IssueList
             title="Automatic Services Not Running"
-            items={ensureArray<{ name: string; display_name?: string; start_mode: string; state: string }>(inventory?.services_summary?.auto_stopped).map((service) => ({
+            items={ensureArray<{ name: string; display_name?: string; start_mode: string; state: string }>(
+              inventory.services_summary?.auto_stopped
+            ).map((service) => ({
               primary: service.display_name || service.name,
-              secondary: `${service.name} • ${service.start_mode} • ${service.state}`
+              secondary: `${service.name} • ${service.start_mode} • ${service.state}`,
             }))}
             emptyText="No automatic services are currently stopped."
           />
 
           <IssueList
             title="Recent Service Failures"
-            items={ensureArray<{ time: number; id: number; message: string }>(inventory?.services_summary?.recent_failures).map((failure) => ({
+            items={ensureArray<{ time: number; id: number; message: string }>(
+              inventory.services_summary?.recent_failures
+            ).map((failure) => ({
               primary: `Event ${failure.id}`,
-              secondary: `${failure.message} • ${new Date(Number(failure.time)).toLocaleString()}`
+              secondary: `${failure.message} • ${new Date(Number(failure.time)).toLocaleString()}`,
             }))}
             emptyText="No recent service failures found."
           />
 
           <IssueList
             title="Driver Problems"
-            items={ensureArray<{ name: string; status?: string; error_code?: number }>(inventory?.drivers_summary?.problems).map((driver) => ({
+            items={ensureArray<{ name: string; status?: string; error_code?: number }>(
+              inventory.drivers_summary?.problems
+            ).map((driver) => ({
               primary: driver.name || "Unknown driver",
-              secondary: `Status: ${driver.status ?? "Unknown"} • Error code: ${driver.error_code ?? "-"}`
+              secondary: `Status: ${driver.status ?? "Unknown"} • Error code: ${driver.error_code ?? "-"}`,
             }))}
             emptyText="No driver problems detected."
           />
 
           <IssueList
             title="Outdated Drivers"
-            items={ensureArray<{ device_name?: string; manufacturer?: string; version?: string; driver_date?: string }>(inventory?.drivers_summary?.outdated).map((driver) => ({
+            items={ensureArray<{ device_name?: string; manufacturer?: string; version?: string; driver_date?: string }>(
+              inventory.drivers_summary?.outdated
+            ).map((driver) => ({
               primary: driver.device_name || "Unknown device",
-              secondary: `${driver.manufacturer ?? "Unknown vendor"} • ${driver.version ?? "-"} • ${driver.driver_date ?? "-"}`
+              secondary: `${driver.manufacturer ?? "Unknown vendor"} • ${driver.version ?? "-"} • ${driver.driver_date ?? "-"}`,
             }))}
             emptyText="No outdated drivers found."
           />
         </div>
 
-        <div style={{ marginTop: 12, fontSize: 12, color: "#64748b" }}>
-          Last inventory refresh: {inventory?.updated_at ? new Date(Number(inventory.updated_at)).toLocaleString() : "-"}
+        <div className={styles.footNote}>
+          Last inventory refresh: {inventory.updated_at ? new Date(Number(inventory.updated_at)).toLocaleString() : "-"}
         </div>
-      </GlassCard>
+      </DashboardWidget>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
-          gap: 16,
-          alignItems: "start",
-        }}
-      >
-
-        <GlassCard>
-          {/* Processes */}
-
-          <div style={{ background: "#fbfcfd", padding: 16, borderRadius: 12 }}>
-            <h3 style={{ marginBottom: 10 }}>Top Processes</h3>
-            {processes.map((p: any) => (
-              <div key={p.name} style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>{p.name}</span>
-                {/* <span>{p.cpu}%</span> */}
-                <span>{Number(p.cpu ?? 0).toFixed(1)}%</span>
-              </div>
-
-            ))}
+      <DashboardWidget title="Top Processes" isEmpty={processes.length === 0} emptyMessage="No process data yet.">
+        {processes.map((p) => (
+          <div key={p.name} className={styles.processRow}>
+            <span>{p.name}</span>
+            <span>{Number(p.cpu ?? 0).toFixed(1)}%</span>
           </div>
-
-        </GlassCard>
-        <GlassCard>
-          {/* EVENTS TIMELINE */}
-          <div style={{ background: "white", padding: 15, borderRadius: 12 }}>
-            <h3>Incident Timeline</h3>
-
-            <div style={{ maxHeight: 300, overflowY: "auto" }}>
-              {events.map((e: any) => (
-                <div key={e.time} style={{ borderBottom: "1px solid #e5e7eb", padding: "8px 0", display: "flex", gap: 10 }}>
-                  <span>
-                    {e.type === "OFFLINE"
-                      ? "🔴"
-                      : e.type === "ONLINE"
-                        ? "🟢"
-                        : e.type.includes("CPU")
-                          ? "🟠"
-                          : "🟡"}
-                  </span>
-
-                  <div>
-                    <div style={{ fontWeight: 350 }}>{e.message}</div>
-                    <div style={{ fontSize: 12, color: "#6b7280" }}>
-                      {new Date(Number(e.time)).toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </GlassCard>
-      </div>
-
+        ))}
+      </DashboardWidget>
     </div>
-
   );
 }
 
@@ -646,7 +899,7 @@ function StatusRow({
   label,
   value,
   displayValue,
-  onFix
+  onFix,
 }: {
   label: string;
   value: unknown;
@@ -657,35 +910,16 @@ function StatusRow({
   const text = displayValue ?? formatStatusValue(value);
 
   return (
-    <div style={{
-      display: "flex",
-      justifyContent: "space-between",
-      padding: "12px 0",
-      borderBottom: "1px solid #eee",
-      gap: 16
-    }}>
-      <div style={{ color: "#334155" }}>{label}</div>
+    <div className={styles.statusRow}>
+      <div className={styles.statusLabel}>{label}</div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center", textAlign: "right", flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <span style={{
-          color: toneColor,
-          fontWeight: 600
-        }}>
+      <div className={styles.statusValueRow}>
+        <span className={styles.statusValue} style={{ color: toneColor }}>
           {ok ? "OK" : "Check"} • {text}
         </span>
 
-        {!ok && (
-          <button
-            onClick={onFix}
-            style={{
-              background: "#25eb3f",
-              color: "black",
-              border: "none",
-              padding: "4px 10px",
-              borderRadius: 6,
-              cursor: "pointer"
-            }}
-          >
+        {!ok && onFix && (
+          <button className={styles.repairButton} onClick={onFix}>
             Repair
           </button>
         )}
@@ -694,38 +928,47 @@ function StatusRow({
   );
 }
 
-/* small components */
-
-function Info({ title, value, color = "black" }: any) {
+function MiniStat({ title, value, color }: { title: string; value: number | string; color: string }) {
   return (
-    <div
-      style={{
-        padding: 20,
-        borderRadius: 16,
-        background: "linear-gradient(135deg,#f8fafc,#eef2ff)",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 12px 28px rgba(15,23,42,0.06)",
-        minWidth: 0,
-        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-      }}
-      className="panel"
-      onMouseEnter={(e: any) => (e.currentTarget.style.transform = "translateY(-3px)")}
-      onMouseLeave={(e: any) => (e.currentTarget.style.transform = "translateY(0)")}
-    >
-      <div style={{ color: "#111827", marginBottom: 8, fontWeight: 600 }}>{title}</div>
-      <div style={{ fontFamily: "monospace", fontSize: 26, color, fontWeight: 600 }}>{value}</div>
+    <div className={styles.miniStat}>
+      <div className={styles.miniStatTitle}>{title}</div>
+      <div className={styles.miniStatValue} style={{ color }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function IssueList({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string;
+  items: Array<{ primary: string; secondary: string }>;
+  emptyText: string;
+}) {
+  return (
+    <div className={styles.issueCard}>
+      <div className={styles.issueTitle}>{title}</div>
+
+      <div className={styles.issueList}>
+        {items.length === 0 && <div className={styles.issueEmpty}>{emptyText}</div>}
+
+        {items.map((item, index) => (
+          <div key={`${item.primary}-${index}`} className={styles.issueItem}>
+            <div className={styles.issueItemTitle}>{item.primary}</div>
+            <div className={styles.issueItemMeta}>{item.secondary}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 function evaluateStatus(label: string, value: unknown) {
   const text = String(value ?? "").trim().toUpperCase();
-  const numberValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number(value)
-        : NaN;
+  const numberValue = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
 
   if (label === "CPU Temp") {
     const ok = Number.isFinite(numberValue) && numberValue < 70;
@@ -753,9 +996,7 @@ function evaluateStatus(label: string, value: unknown) {
   }
 
   if (label === "Windows Update" || label === "Driver Health") {
-    const ok = ["UP TO DATE", "UPDATED", "HEALTHY", "OK", "GOOD", "ENABLED"].some((token) =>
-      text.includes(token)
-    );
+    const ok = ["UP TO DATE", "UPDATED", "HEALTHY", "OK", "GOOD", "ENABLED"].some((token) => text.includes(token));
     return { ok, toneColor: ok ? "#16a34a" : "#d97706" };
   }
 
@@ -773,161 +1014,4 @@ function formatStatusValue(value: unknown) {
   if (value === undefined || value === null || value === "") return "--";
   if (typeof value === "boolean") return value ? "Enabled" : "Disabled";
   return String(value);
-}
-
-function Chart({
-  title,
-  data,
-  dataKey,
-  color
-}: {
-  title: string;
-  data: MetricPoint[];
-  dataKey: "cpu" | "ram";
-  color: string;
-}) {
-  const formatted = data.map((d: any) => ({
-    ...d,
-    time: new Date(Number(d.time)).toLocaleTimeString(),
-  }));
-
-  const latestValue =
-    formatted.length > 0
-      ? Number(formatted[formatted.length - 1][dataKey] ?? 0).toFixed(1)
-      : "--";
-
-  return (
-    <div
-      style={{
-        background: "linear-gradient(180deg,#f8fbff,#eef4ff)",
-        padding: 20,
-        borderRadius: 18,
-        minWidth: 0,
-        display: "flex",
-        flexDirection: "column",
-        border: "1px solid #dbe7ff",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.7)",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: 16 }}>{title}</h3>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>Live trend for {title.toLowerCase()}</div>
-        </div>
-        <div style={{ color, fontWeight: 800, fontSize: 24 }}>{latestValue}{latestValue !== "--" ? "%" : ""}</div>
-      </div>
-
-      <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={formatted} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-          <defs>
-            <linearGradient id={`chart-fill-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.24} />
-              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke="#dbeafe" strokeDasharray="4 4" vertical={false} />
-          <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-          <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={34} />
-          <Tooltip
-            contentStyle={{
-              borderRadius: 12,
-              border: "1px solid #dbeafe",
-              boxShadow: "0 12px 30px rgba(15,23,42,0.12)",
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey={dataKey}
-            stroke={color}
-            strokeWidth={3}
-            dot={false}
-            activeDot={{ r: 5, stroke: "#fff", strokeWidth: 2 }}
-            fill={`url(#chart-fill-${dataKey})`}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function updateButton(background: string): React.CSSProperties {
-  return {
-    background,
-    color: "white",
-    border: "none",
-    padding: "10px 14px",
-    borderRadius: 10,
-    cursor: "pointer",
-    fontWeight: 700
-  };
-}
-
-function MiniStat({
-  title,
-  value,
-  color
-}: {
-  title: string;
-  value: number | string;
-  color: string;
-}) {
-  return (
-    <div
-      style={{
-        background: "linear-gradient(180deg,#ffffff,#f8fafc)",
-        border: "1px solid #e2e8f0",
-        borderRadius: 14,
-        padding: 14
-      }}
-    >
-      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color }}>{value}</div>
-    </div>
-  );
-}
-
-function IssueList({
-  title,
-  items,
-  emptyText
-}: {
-  title: string;
-  items: Array<{ primary: string; secondary: string }>;
-  emptyText: string;
-}) {
-  return (
-    <div
-      style={{
-        background: "#f7f9fa",
-        border: "1px solid #e2e8f0",
-        borderRadius: 14,
-        padding: 11,
-        minWidth: 0
-      }}
-    >
-      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>{title}</div>
-
-      <div style={{ maxHeight: 230, overflowY: "auto", display: "grid", gap: 10 }}>
-        {items.length === 0 && (
-          <div style={{ color: "#64748b", fontSize: 13 }}>{emptyText}</div>
-        )}
-
-        {items.map((item, index) => (
-          <div
-            key={`${item.primary}-${index}`}
-            style={{
-              borderBottom: "1px solid #fcfdff",
-              boxShadow: "0 4px 12px rgba(105, 100, 100, 0.08)",
-              paddingBottom: 10
-            }}
-          >
-            <div style={{ fontWeight: 600, color: "#0f172a" }}>{item.primary}</div>
-            <div style={{ fontSize: 12, color: "#f90303", marginTop: 4, lineHeight: 1.4, opacity: 0.7 }}>
-              {item.secondary}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 }

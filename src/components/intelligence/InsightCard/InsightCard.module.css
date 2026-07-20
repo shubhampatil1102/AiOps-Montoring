@@ -1,0 +1,10 @@
+.row{
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+.message{
+font-size:13.5px;
+color:#0f172a;
+}

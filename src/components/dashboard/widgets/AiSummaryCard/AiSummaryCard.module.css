@@ -1,0 +1,19 @@
+.summary{
+display:flex;
+align-items:flex-start;
+gap:12px;
+height:100%;
+}
+
+.icon{
+color:#2563eb;
+flex-shrink:0;
+margin-top:2px;
+}
+
+.summary p{
+margin:0;
+font-size:15px;
+line-height:1.6;
+color:#050000;
+}

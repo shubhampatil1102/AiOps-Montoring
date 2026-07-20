@@ -4,6 +4,8 @@ export interface Alert {
   id: string;
   message: string;
   time: number;
+  resolved?: boolean;
+  acknowledged?: boolean;
 }
 
 export interface MetricsHistoryPoint {

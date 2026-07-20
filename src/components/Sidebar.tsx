@@ -17,9 +17,14 @@
 import { NavLink } from "react-router-dom";
 import { Dispatch, SetStateAction } from "react";
 import { sidebarNavigation } from "../constants/navigation";
+import { resolveModuleForPath } from "../constants/routePermissions";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CopyMinus,
+  ListCollapse,
+  MoveRight
 } from "lucide-react";
 import { sidebarColors } from "../themes/colors";
 
@@ -37,6 +42,30 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
    */
   const SIDEBAR_WIDTH = 260;
   const SIDEBAR_COLLAPSED_WIDTH = 80;
+
+  const { can } = usePermissions();
+
+  const visibleNavigation = sidebarNavigation.filter((item) => {
+    const module = resolveModuleForPath(item.path);
+    // Unmapped items aren't gated — same "no config, no restriction" rule
+    // the route guard uses.
+    return !module || can(module, "view");
+  });
+
+  const groupedNavigation = visibleNavigation.reduce<
+    Array<[string, typeof sidebarNavigation]>
+  >((groups, item) => {
+    const existing = groups.find(([group]) => group === item.group);
+
+    if (existing) {
+      existing[1].push(item);
+    } else {
+      groups.push([item.group, [item]]);
+    }
+
+    return groups;
+  }, []);
+
   return (
 
     <div
@@ -48,7 +77,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         display: "flex",
         flexDirection: "column",
         position: "relative",
-        boxShadow: "4px 0 20px rgba(0,0,0,.3)"
+        boxShadow: "4px 0 30px rgba(54, 52, 52, 0.3)"
       }}
     >
 
@@ -65,46 +94,64 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       {/* ===== Navigation ===== */}
       <div style={{ flex: 1 }}>
 
-        {sidebarNavigation.map((m, i) => {
+        {groupedNavigation.map(([group, items]) => (
+          <div key={group}>
 
-          const Icon = m.icon;
+            {!collapsed && (
+              <div style={{
+                padding: "16px 22px 6px",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "#98adcb"
+              }}>
+                {group}
+              </div>
+            )}
 
-          return (
-            <NavLink
-              key={i}
-              to={m.path}
-              style={({ isActive }) => ({
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                padding: "14px 18px",
-                textDecoration: "none",
-                color: sidebarColors.text,
-                margin: "6px 10px",
-                borderRadius: 10,
-                transition: "all .25s",
-                background: isActive
-                  ? `linear-gradient(90deg, ${sidebarColors.activeStart}, ${sidebarColors.activeEnd})`
-                  : "transparent",
-                boxShadow: isActive
-                  ? "0 0 15px rgba(37,99,235,.6)"
-                  : "none"
-              })}
-            >
+            {items.map((m) => {
 
-              <Icon size={20} />
+              const Icon = m.icon;
 
-              {!collapsed && (
-                <span style={{
-                  transition: "opacity .2s"
-                }}>
-                  {m.name}
-                </span>
-              )}
+              return (
+                <NavLink
+                  key={m.path}
+                  to={m.path}
+                  style={({ isActive }) => ({
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                    padding: "12px 18px",
+                    textDecoration: "none",
+                    color: isActive ? "#ffffff" : sidebarColors.text,
+                    margin: "3px 10px",
+                    borderRadius: 10,
+                    transition: "all .25s",
+                    background: isActive
+                      ? `linear-gradient(90deg, ${sidebarColors.activeStart}, ${sidebarColors.activeEnd})`
+                      : "transparent",
+                    boxShadow: isActive
+                      ? "0 6px 16px rgba(75,90,249,.35)"
+                      : "none"
+                  })}
+                >
 
-            </NavLink>
-          );
-        })}
+                  <Icon size={20} />
+
+                  {!collapsed && (
+                    <span style={{
+                      transition: "opacity .2s"
+                    }}>
+                      {m.name}
+                    </span>
+                  )}
+
+                </NavLink>
+              );
+            })}
+          </div>
+        ))}
       </div>
 
       {/* ===== Footer ===== */}
@@ -117,13 +164,13 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
           right: -12,
           top: 30,
           background: sidebarColors.background,
-          borderRadius: "50%",
+          borderRadius: "60%",
           padding: 6,
           cursor: "pointer",
-          boxShadow: "0 0 10px rgba(0,0,0,.5)"
+          boxShadow: "0 0 0px rgba(0,0,0,.5)"
         }}
       >
-        {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        {collapsed ? <ListCollapse size={18} /> : <CopyMinus size={18} />}
       </div>
 
     </div>

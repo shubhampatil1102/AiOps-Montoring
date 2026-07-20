@@ -1,6 +1,13 @@
 .chart{
-height:320px;
+height:100%;
+min-height:220px;
 display:flex;
 align-items:center;
 justify-content:center;
+}
+
+@media (max-height: 820px) and (min-width: 993px) {
+.chart{
+min-height:190px;
+}
 }

@@ -4,6 +4,7 @@ import {
   fetchDashboardDevices,
   fetchDashboardHardware,
 } from "@/api/dashboard";
+import { getSeverity } from "@/utils/severity";
 import type { Alert, Device, HardwareMap } from "@/types/dashboard";
 
 export default function useDashboardData() {
@@ -13,6 +14,9 @@ export default function useDashboardData() {
  const {
   data: devices = [],
   isLoading: devicesLoading,
+  isError: devicesError,
+  isFetching: devicesFetching,
+  refetch: refetchDevices,
 } = useQuery<Device[]>({
     queryKey: ["devices"],
     queryFn: fetchDashboardDevices,
@@ -23,6 +27,9 @@ export default function useDashboardData() {
  const {
   data: alerts = [],
   isLoading: alertsLoading,
+  isError: alertsError,
+  isFetching: alertsFetching,
+  refetch: refetchAlerts,
 } = useQuery<Alert[]>({
     queryKey: ["alerts"],
     queryFn: fetchDashboardAlerts,
@@ -33,6 +40,8 @@ export default function useDashboardData() {
   const {
   data: hardware = {},
   isLoading: hardwareLoading,
+  isFetching: hardwareFetching,
+  refetch: refetchHardware,
 } = useQuery<HardwareMap>({
     queryKey: ["hardware", devices.map((d) => d.id).join(",")],
     queryFn: () => fetchDashboardHardware(devices.map((d) => d.id)),
@@ -64,6 +73,12 @@ export default function useDashboardData() {
     (d) => Date.now() - Number(d.time || 0) >= 20000
   );
 
+  const activeAlerts = alerts.filter((a) => !a.acknowledged);
+  const unresolvedAlerts = alerts.filter((a) => !a.resolved);
+  const criticalAlerts = alerts.filter(
+    (a) => !a.resolved && getSeverity(a.message).label === "CRITICAL"
+  );
+
   return {
     devices,
     alerts,
@@ -72,9 +87,16 @@ export default function useDashboardData() {
     warning,
     critical,
     offline,
+    activeAlerts,
+    unresolvedAlerts,
+    criticalAlerts,
     isLoading:
   devicesLoading ||
   alertsLoading ||
   hardwareLoading,
+    isError: devicesError || alertsError,
+    isFetching: devicesFetching || alertsFetching || hardwareFetching,
+    refetch: () =>
+      Promise.all([refetchDevices(), refetchAlerts(), refetchHardware()]),
   };
 }

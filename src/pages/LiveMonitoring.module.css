@@ -1,0 +1,78 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+  background: #f8fafc;
+  min-height: 100%;
+}
+
+.lastUpdated {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* KPI Cards */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* Chart + Activity feed row */
+.bottomGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.chart {
+  height: 360px;
+}
+
+.feed {
+  height: 360px;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart,
+  .feed {
+    height: 340px;
+  }
+}
+
+@media (max-width: 992px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chart,
+  .feed {
+    height: auto;
+  }
+}
+
+@media (max-height: 820px) and (min-width: 993px) {
+  .page {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .kpiGrid,
+  .bottomGrid {
+    gap: 14px;
+  }
+
+  .chart,
+  .feed {
+    height: 300px;
+  }
+}

@@ -7,6 +7,8 @@
   align-items: center;
 
   padding: 0 32px;
+  gap: 16px;
+  min-width: 0;
 
   border-bottom: 1px solid #e5e7eb;
 }
@@ -14,6 +16,45 @@
 .left {
   display: flex;
   align-items: center;
+  gap: 20px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #64748b;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.breadcrumbItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.breadcrumbItem:last-child {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.breadcrumbSep {
+  color: #cbd5e1;
+}
+
+.orgBadge {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 8px 14px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .searchBox {
@@ -22,7 +63,9 @@
 
   gap: 10px;
 
-  width: 420px;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 420px;
 
   background: #f8fafc;
 
@@ -50,7 +93,37 @@
 
   align-items: center;
 
-  gap: 20px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1400px) {
+  .orgBadge {
+    display: none;
+  }
+}
+
+@media (max-width: 1200px) {
+  .breadcrumb {
+    display: none;
+  }
+}
+
+@media (max-width: 992px) {
+  .dateButton span,
+  .dateButton svg:last-child {
+    display: none;
+  }
+
+  .userInfo {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .searchBox {
+    display: none;
+  }
 }
 
 .dateButton {
@@ -109,6 +182,10 @@
   font-size: 11px;
 }
 
+.userWrapper {
+  position: relative;
+}
+
 .user {
   display: flex;
 
@@ -117,6 +194,89 @@
   gap: 12px;
 
   cursor: pointer;
+
+  border: none;
+  background: transparent;
+  padding: 4px;
+  border-radius: 10px;
+  font: inherit;
+  color: inherit;
+}
+
+.user:hover {
+  background: #f1f5f9;
+}
+
+.userMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 160px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  padding: 6px;
+  z-index: 50;
+}
+
+.userMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+}
+
+.userMenuItem:hover {
+  background: #f1f5f9;
+}
+
+.userMenuItemDanger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #dc2626;
+  cursor: pointer;
+  text-align: left;
+}
+
+.userMenuItemDanger:hover {
+  background: #fee2e2;
+}
+
+.themeToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 10px;
+  color: #475569;
+  cursor: pointer;
+}
+
+.themeToggle:hover {
+  background: #f8fafc;
+  color: #0f172a;
 }
 
 .avatar {

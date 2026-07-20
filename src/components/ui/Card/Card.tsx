@@ -6,6 +6,7 @@ interface CardProps {
   subtitle?: string;
   children: ReactNode;
   actions?: ReactNode;
+  fill?: boolean;
 }
 
 export default function Card({
@@ -13,9 +14,10 @@ export default function Card({
   subtitle,
   actions,
   children,
+  fill = false,
 }: CardProps) {
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${fill ? styles.fill : ""}`}>
       {(title || actions) && (
         <div className={styles.header}>
           <div>

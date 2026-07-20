@@ -1,0 +1,267 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #6b63b5 0%, #4b5af9 100%);
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 40px 36px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.brandMark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6b63b5, #4b5af9);
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.subtitle {
+  margin: 0 0 24px;
+  font-size: 13.5px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.formError {
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 18px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.field input {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field input:focus-visible {
+  outline: none;
+  border-color: #4b5af9;
+  box-shadow: 0 0 0 3px rgba(75, 90, 249, 0.15);
+}
+
+.inputError {
+  border-color: #ef4444 !important;
+}
+
+.fieldError {
+  font-size: 12px;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.passwordRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordRow input {
+  flex: 1;
+  padding-right: 40px;
+}
+
+.togglePassword {
+  position: absolute;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.togglePassword:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.togglePassword:focus-visible {
+  outline: 2px solid #4b5af9;
+  outline-offset: 1px;
+}
+
+.optionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.rememberMe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.rememberMe input {
+  width: 15px;
+  height: 15px;
+  accent-color: #4b5af9;
+  cursor: pointer;
+}
+
+.forgotLink {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: #4b5af9;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.forgotLink:hover {
+  text-decoration: underline;
+}
+
+.forgotLink:focus-visible {
+  outline: 2px solid #4b5af9;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.submitWrapper button {
+  width: 100%;
+  padding: 12px 18px;
+  font-size: 14.5px;
+}
+
+.submitWrapper button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.footNote {
+  margin: 28px 0 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 32px 22px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    background: linear-gradient(135deg, #2c2856 0%, #1c1f4a 100%);
+  }
+
+  .card {
+    background: #111827;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  }
+
+  .brand,
+  .title {
+    color: #f1f5f9;
+  }
+
+  .subtitle {
+    color: #94a3b8;
+  }
+
+  .field label {
+    color: #cbd5e1;
+  }
+
+  .field input {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f1f5f9;
+  }
+
+  .field input:focus-visible {
+    border-color: #818cf8;
+    box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25);
+  }
+
+  .togglePassword {
+    color: #94a3b8;
+  }
+
+  .togglePassword:hover {
+    background: #1e293b;
+    color: #f1f5f9;
+  }
+
+  .rememberMe {
+    color: #cbd5e1;
+  }
+
+  .forgotLink {
+    color: #a5b4fc;
+  }
+
+  .footNote {
+    color: #64748b;
+  }
+}

@@ -1,41 +1,124 @@
-.grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
-}
 .page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 10px;
+  gap: 18px;
+  padding: 18px;
+  background: #f8fafc;
+  min-height: 100%;
 }
 
-.kpiGrid {
+/* Row 1 — Organization Health + AI Executive Summary */
+.topRow {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
+  grid-template-columns: 7fr 5fr;
+  gap: 18px;
+  align-items: stretch;
 }
 
-.contentGrid {
+.orgHealth,
+.aiSummary {
+  min-height: 220px;
+}
+
+/* Row 2 — Devices Needing Attention + AI Insights */
+.attentionRow {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
-  position: relative;
-  z-index: 1;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
 }
 
-@media (max-width: 1200px) {
-  .kpiGrid {
-    grid-template-columns: repeat(2, 1fr);
+.attention,
+.insights {
+  height: 380px;
+}
+
+/* Row 3 — Critical Devices */
+.criticalSection {
+  width: 100%;
+}
+
+/* Row 4 — Intelligence Services Overview */
+.intelligenceSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.intelligenceHeading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.intelligenceGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Row 5 — Recent Activity */
+.activitySection {
+  height: 420px;
+}
+
+/* Row 6 — Quick Actions */
+.actionsSection {
+  width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .intelligenceGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 992px) {
+  .topRow,
+  .attentionRow {
+    grid-template-columns: 1fr;
   }
 
-  .contentGrid {
+  .attention,
+  .insights {
+    height: auto;
+  }
+
+  .intelligenceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .activitySection {
+    height: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .intelligenceGrid {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 640px) {
-  .kpiGrid {
-    grid-template-columns: 1fr;
+@media (max-height: 820px) and (min-width: 993px) {
+  .page {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .topRow,
+  .attentionRow,
+  .intelligenceGrid {
+    gap: 14px;
+  }
+
+  .attention,
+  .insights {
+    height: 340px;
+  }
+
+  .activitySection {
+    height: 360px;
   }
 }

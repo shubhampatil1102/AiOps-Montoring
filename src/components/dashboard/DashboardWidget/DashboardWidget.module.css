@@ -17,16 +17,87 @@ font-size:13px;
 color:#64748b;
 }
 
-.toolbar{
-margin-bottom:16px;
+.headerRight{
+display:flex;
+align-items:center;
+gap:10px;
+flex-shrink:0;
 }
 
-.content{
-flex:1;
+.meta{
+display:flex;
+align-items:center;
+gap:6px;
+}
+
+.lastUpdated{
+font-size:11px;
+color:#94a3b8;
+white-space:nowrap;
+}
+
+.iconButton{
+display:flex;
+align-items:center;
+justify-content:center;
+width:26px;
+height:26px;
+border-radius:8px;
+border:1px solid #e2e8f0;
+background:#fff;
+color:#64748b;
+cursor:pointer;
+transition:.15s;
+}
+
+.iconButton:hover{
+background:#f8fafc;
+color:#0f172a;
+border-color:#cbd5e1;
+}
+
+.toolbar{
+margin-bottom:16px;
 }
 
 .footer{
 margin-top:20px;
 display:flex;
 justify-content:flex-end;
+}
+.widget{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    min-height:0;
+}
+
+.content{
+    flex:1;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+}
+
+@media (max-height: 820px) and (min-width: 993px) {
+    .header{
+        margin-bottom:12px;
+    }
+
+    .header h3{
+        font-size:18px;
+    }
+
+    .header p{
+        margin-top:3px;
+        font-size:12px;
+    }
+
+    .toolbar{
+        margin-bottom:10px;
+    }
+
+    .footer{
+        margin-top:12px;
+    }
 }

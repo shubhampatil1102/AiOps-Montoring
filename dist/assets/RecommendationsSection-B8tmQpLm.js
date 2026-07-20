@@ -1,0 +1,1 @@
+import{j as e,E as r,g as s}from"./index-AxXK9opS.js";function o({recommendations:t}){return t.length===0?e.jsx(r,{message:"No recommendations for this device right now."}):e.jsx("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:16},children:t.map((a,i)=>e.jsx(s,{recommendation:a},`${a.relatedMetric}-${i}`))})}export{o as default};

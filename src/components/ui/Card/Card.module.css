@@ -3,8 +3,19 @@
   border-radius: 16px;
   border: 1px solid #e5e7eb;
   padding: 24px;
-  margin-bottom: 10px;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+
+  height: 100%;
+  min-height: 0;
+}
+
+.fill {
+  flex: 1;
+  min-height: 0;
 }
 
 .header {
@@ -12,6 +23,7 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .header h3 {
@@ -27,5 +39,16 @@
 }
 
 .content {
-  width: 100%;
+  flex: 1;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-height: 820px) and (min-width: 993px) {
+  .card {
+    padding: 18px;
+    border-radius: 14px;
+  }
 }

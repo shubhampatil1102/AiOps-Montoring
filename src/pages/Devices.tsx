@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardWidget from "../components/dashboard/DashboardWidget";
 import {
-  DeviceDetailsDrawer,
   DeviceTable,
   DeviceTableSkeleton,
   DeviceToolbar,
@@ -16,12 +16,12 @@ import styles from "./Devices.module.css";
 const PAGE_SIZE = 12;
 
 export default function Devices() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<DeviceStatus | "All">("All");
   const [sortKey, setSortKey] = useState<DeviceSortKey>("id");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
   const devicesQuery = useDevices();
   const devices = devicesQuery.data || [];
@@ -109,7 +109,7 @@ export default function Devices() {
             devices={pagedDevices}
             hardware={hardware}
             onPageChange={setPage}
-            onSelectDevice={setSelectedDevice}
+            onSelectDevice={(device) => navigate(`/devices/${encodeURIComponent(device.id)}`)}
             onSort={handleSort}
             page={currentPage}
             pageSize={PAGE_SIZE}
@@ -119,12 +119,6 @@ export default function Devices() {
           />
         )}
       </DashboardWidget>
-
-      <DeviceDetailsDrawer
-        device={selectedDevice}
-        onClose={() => setSelectedDevice(null)}
-        open={Boolean(selectedDevice)}
-      />
     </div>
   );
 }

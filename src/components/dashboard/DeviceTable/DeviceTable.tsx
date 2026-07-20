@@ -3,6 +3,7 @@ import UsageBar from "../../UsageBar";
 import Badge from "../../ui/Badge/Badge";
 import { Circle } from "lucide-react";
 import { Thermometer } from "lucide-react";
+import { getDeviceHealthStatus } from "@/utils/deviceState";
 
 export type Device = {
     id: string;
@@ -62,24 +63,7 @@ export default function DeviceTable({
             <tbody>
 
                 {devices.map((device) => {
-                    const online =
-                        Date.now() - Number(device.time || 0) < 20000;
-
-                    let status: keyof typeof badgeVariant = "Healthy";
-
-                    if (!online) {
-                        status = "Offline";
-                    } else if (
-                        Number(device.cpu || 0) > 90 ||
-                        Number(device.ram || 0) > 90
-                    ) {
-                        status = "Critical";
-                    } else if (
-                        Number(device.cpu || 0) > 70 ||
-                        Number(device.ram || 0) > 80
-                    ) {
-                        status = "Warning";
-                    }
+                    const status = getDeviceHealthStatus(device);
 
                     return (
                         <tr key={device.id} className={styles.row}>

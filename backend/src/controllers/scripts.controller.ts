@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import * as agentJobService from "../services/agentJob.service";
 import * as scriptService from "../services/script.service";
 
 export async function getScriptLibrary(_: Request, res: Response) {
@@ -41,7 +42,7 @@ export async function getScriptApprovals(_: Request, res: Response) {
 }
 
 export async function pullAgentJob(req: Request, res: Response) {
-  const job = await scriptService.pullAgentJob(String(req.params.deviceId));
+  const job = await agentJobService.pullNextAgentJob(String(req.params.deviceId));
   res.send(job);
 }
 
@@ -56,7 +57,7 @@ export async function appendAgentJobLog(req: Request, res: Response) {
 }
 
 export async function saveAgentJobResult(req: Request, res: Response) {
-  await scriptService.saveAgentJobResult(req.body);
+  await agentJobService.saveAgentJobResult(req.body);
   res.send({ ok: true });
 }
 

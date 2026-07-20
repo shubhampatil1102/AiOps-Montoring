@@ -32,7 +32,7 @@ $device = $env:COMPUTERNAME.Trim().ToUpper()
 # =====================================================
 # COLLECTION SCHEDULER
 # =====================================================
-$COLLECT_USAGE_SECONDS = 5
+$COLLECT_USAGE_SECONDS = 60
 $COLLECT_PROCESSES_SECONDS = 10
 $COLLECT_HARDWARE_SECONDS = 60
 $COLLECT_INVENTORY_SECONDS = 300
@@ -223,12 +223,269 @@ function Get-UpdateHealth {
         $outdated=0
     }
 
+    # ================= REGISTRY REBOOT PENDING =================
+    # Real Windows-native signals — the same keys Windows itself checks —
+    # not fabricated. Any one present means a reboot is pending.
+    try {
+        $cbsPending = Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending"
+        $wuPending = Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"
+        $pendingRename = $null -ne (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager" -Name "PendingFileRenameOperations" -ErrorAction SilentlyContinue)
+
+        $registryRebootPending = [bool]($cbsPending -or $wuPending -or $pendingRename)
+    } catch {
+        $registryRebootPending = $false
+    }
+
+    # ================= DEVICE CLASS =================
+    # Best-effort from real WMI signals only. "shared"/"kiosk" have no
+    # reliable WMI signal and are intentionally never auto-assigned here.
+    try {
+        $chassisTypes = (Get-CimInstance Win32_SystemEnclosure -ErrorAction Stop).ChassisTypes
+        $productType = (Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).ProductType
+        $laptopChassis = @(8,9,10,11,12,14,18,21)
+        $desktopChassis = @(3,4,5,6,7,15,16)
+
+        if ($productType -eq 2 -or $productType -eq 3) {
+            $deviceClass = "server"
+        } elseif ($chassisTypes | Where-Object { $laptopChassis -contains $_ }) {
+            $deviceClass = "laptop"
+        } elseif ($chassisTypes | Where-Object { $desktopChassis -contains $_ }) {
+            $deviceClass = "desktop"
+        } else {
+            $deviceClass = "unknown"
+        }
+    } catch {
+        $deviceClass = "unknown"
+    }
+
     return @{
         windows_update_status = $winStatus
         pending_updates = $pending
         failed_updates = $failed
         driver_status = $driverStatus
         outdated_drivers = $outdated
+        registry_reboot_pending = $registryRebootPending
+        device_class = $deviceClass
+    }
+}
+
+# =====================================================
+# PATCH JOB ENGINE
+# =====================================================
+function Post-PatchProgress($jobId, $status, $detail, $percent) {
+    try {
+        Invoke-RestMethod `
+            -Uri "$BackendUrl/agent/patch-job/progress" `
+            -Method Post `
+            -Body (@{
+                job_id  = $jobId
+                status  = $status
+                detail  = $detail
+                percent = $percent
+            } | ConvertTo-Json -Depth 5) `
+            -ContentType "application/json"
+    } catch {
+        Write-Host "Patch progress post failed: $_"
+    }
+}
+
+function Post-PatchResult($jobId, $status, $updatesTotal, $updatesProcessed, $updatesFailed, $rebootRequired, $errorMessage) {
+    try {
+        Invoke-RestMethod `
+            -Uri "$BackendUrl/agent/job/result" `
+            -Method Post `
+            -Body (@{
+                job_id             = $jobId
+                job_type           = "PATCH"
+                status             = $status
+                updates_total      = $updatesTotal
+                updates_processed  = $updatesProcessed
+                updates_failed     = $updatesFailed
+                reboot_required    = $rebootRequired
+                error              = $errorMessage
+            } | ConvertTo-Json -Depth 5) `
+            -ContentType "application/json"
+    } catch {
+        Write-Host "Patch result post failed: $_"
+    }
+}
+
+function Test-PatchJobCancelled($jobId) {
+    try {
+        $current = Invoke-RestMethod -Uri "$BackendUrl/patch/jobs/$jobId" -Method Get
+        return $current.status -eq "CANCELLED"
+    } catch {
+        return $false
+    }
+}
+
+function Invoke-PatchInstall($job) {
+
+    Post-PatchProgress $job.job_id "PREPARING" "Searching for applicable updates" 10
+
+    $useComApi = $true
+    try {
+        $session = New-Object -ComObject Microsoft.Update.Session
+    } catch {
+        $useComApi = $false
+    }
+
+    if ($useComApi) {
+        try {
+            $searcher = $session.CreateUpdateSearcher()
+            $searchResult = $searcher.Search("IsInstalled=0 and IsHidden=0")
+            $updatesToInstall = New-Object -ComObject Microsoft.Update.UpdateColl
+
+            foreach ($update in $searchResult.Updates) {
+                if (-not $update.EulaAccepted) {
+                    try { $update.AcceptEula() } catch {}
+                }
+                $updatesToInstall.Add($update) | Out-Null
+            }
+
+            $totalCount = $updatesToInstall.Count
+
+            if ($totalCount -eq 0) {
+                Post-PatchResult $job.job_id "COMPLETED" 0 0 0 $false ""
+                return
+            }
+
+            if (Test-PatchJobCancelled $job.job_id) {
+                Write-Host "Patch job $($job.job_id) cancelled before download"
+                return
+            }
+
+            Post-PatchProgress $job.job_id "DOWNLOADING" "Downloading $totalCount update(s)" 40
+            $downloader = $session.CreateUpdateDownloader()
+            $downloader.Updates = $updatesToInstall
+            $downloader.Download() | Out-Null
+
+            if (Test-PatchJobCancelled $job.job_id) {
+                Write-Host "Patch job $($job.job_id) cancelled before install"
+                return
+            }
+
+            Post-PatchProgress $job.job_id "INSTALLING" "Installing $totalCount update(s)" 90
+            $installer = $session.CreateUpdateInstaller()
+            $installer.Updates = $updatesToInstall
+            $installResult = $installer.Install()
+
+            $processed = 0
+            $failedCount = 0
+            for ($i = 0; $i -lt $updatesToInstall.Count; $i++) {
+                # WU ResultCode: 2 = Succeeded, 3 = SucceededWithErrors
+                $resultCode = $installResult.GetUpdateResult($i).ResultCode
+                if ($resultCode -eq 2 -or $resultCode -eq 3) {
+                    $processed++
+                } else {
+                    $failedCount++
+                }
+            }
+
+            $rebootRequired = [bool]$installResult.RebootRequired
+
+            if ($rebootRequired) {
+                Post-PatchResult $job.job_id "WAITING_FOR_REBOOT" $totalCount $processed $failedCount $true ""
+            } elseif ($failedCount -gt 0 -and $processed -eq 0) {
+                Post-PatchResult $job.job_id "FAILED" $totalCount $processed $failedCount $false "All updates failed to install"
+            } else {
+                Post-PatchResult $job.job_id "COMPLETED" $totalCount $processed $failedCount $false ""
+            }
+
+            return
+        } catch {
+            Write-Host "COM API install failed, falling back to PSWindowsUpdate: $_"
+        }
+    }
+
+    # ---- PSWindowsUpdate fallback (COM API unavailable) ----
+    try {
+        Import-Module PSWindowsUpdate -ErrorAction Stop
+        Post-PatchProgress $job.job_id "DOWNLOADING" "Downloading and installing via PSWindowsUpdate" 40
+        $result = Get-WindowsUpdate -MicrosoftUpdate -AcceptAll -IgnoreReboot -Install -ErrorAction Stop
+
+        $installed = ($result | Where-Object { $_.Result -eq "Installed" }).Count
+        $failedCount = ($result | Where-Object { $_.Result -ne "Installed" }).Count
+        $rebootRequired = [bool](Get-WURebootStatus -Silent)
+
+        if ($rebootRequired) {
+            Post-PatchResult $job.job_id "WAITING_FOR_REBOOT" $result.Count $installed $failedCount $true ""
+        } else {
+            Post-PatchResult $job.job_id "COMPLETED" $result.Count $installed $failedCount $false ""
+        }
+    } catch {
+        Post-PatchResult $job.job_id "FAILED" 0 0 0 $false "$_"
+    }
+}
+
+function Invoke-PatchReboot($job) {
+    Post-PatchProgress $job.job_id "REBOOTING" "Restarting device" 50
+
+    $markerDir = "$env:ProgramData\AiOpsAgent"
+    if (-not (Test-Path $markerDir)) {
+        New-Item -ItemType Directory -Path $markerDir -Force | Out-Null
+    }
+    $markerFile = "$markerDir\pending_reboot.json"
+
+    @{
+        reboot_job_id  = $job.job_id
+        install_job_id = $job.related_job_id
+        device         = $device
+    } | ConvertTo-Json | Set-Content -Path $markerFile -Force
+
+    try {
+        Post-PatchResult $job.job_id "COMPLETED" $null $null $null $false ""
+        Restart-Computer -Force
+    } catch {
+        Post-PatchResult $job.job_id "FAILED" $null $null $null $false "$_"
+    }
+}
+
+function Invoke-PatchJob($job) {
+    switch ($job.action) {
+        "SCAN" {
+            Post-PatchProgress $job.job_id "PREPARING" "Scanning for updates" 20
+            $script:updateCache = Get-UpdateHealth
+            $script:lastUpdateCollection = NowMillis
+            Post-PatchResult $job.job_id "COMPLETED" $null $null $null $false ""
+        }
+        "INSTALL" {
+            Invoke-PatchInstall $job
+        }
+        "REBOOT" {
+            Invoke-PatchReboot $job
+        }
+        default {
+            Post-PatchResult $job.job_id "FAILED" $null $null $null $false "Unknown patch action: $($job.action)"
+        }
+    }
+}
+
+function Test-PendingRebootVerification {
+    $markerFile = "$env:ProgramData\AiOpsAgent\pending_reboot.json"
+    if (-not (Test-Path $markerFile)) { return }
+
+    try {
+        $marker = Get-Content $markerFile -Raw | ConvertFrom-Json
+        $installJobId = $marker.install_job_id
+
+        if (-not $installJobId) { return }
+
+        Post-PatchProgress $installJobId "VERIFYING" "Verifying updates after reboot" 95
+
+        $freshScan = Get-UpdateHealth
+        $script:updateCache = $freshScan
+        $script:lastUpdateCollection = NowMillis
+
+        if ($freshScan.pending_updates -eq 0) {
+            Post-PatchResult $installJobId "COMPLETED" $null $null $null $false ""
+        } else {
+            Post-PatchResult $installJobId "FAILED" $null $null $null $false "Verification inconclusive - $($freshScan.pending_updates) update(s) still pending after reboot"
+        }
+    } catch {
+        Write-Host "Reboot verification failed: $_"
+    } finally {
+        Remove-Item $markerFile -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -367,6 +624,12 @@ if(!$job.job_id){return}
 
 Write-Host "Received Job $($job.job_id)"
 
+if($job.job_type -eq "PATCH"){
+    Invoke-PatchJob $job
+    Write-Host "Job Finished"
+    return
+}
+
 $result=Execute-Script $job
 
 Invoke-RestMethod `
@@ -374,6 +637,7 @@ Invoke-RestMethod `
  -Method Post `
  -Body (@{
     job_id=$job.job_id
+    job_type="SCRIPT"
     success=$result.success
     output=$result.output
     error=$result.error
@@ -463,19 +727,40 @@ function Get-HardwareHealth {
 # =====================================================
 # TOP PROCESSES
 # =====================================================
+# =====================================================
+# TOP PROCESSES
+# =====================================================
 function Get-TopProcesses {
 
-Get-Process |
-Sort CPU -Descending |
-Select -First 5 |
-ForEach-Object{
- @{
-  name=$_.ProcessName
-  cpu=[math]::Round($_.CPU,2)
-  ram=[math]::Round($_.WorkingSet64/1MB,2)
- }
+    Get-Process |
+        Where-Object {
+            $_.ProcessName -ne "Idle" -and
+            $_.WorkingSet64 -gt 0
+        } |
+        Sort-Object WorkingSet64 -Descending |
+        Select-Object -First 5 |
+        ForEach-Object {
+
+            @{
+                name = $_.ProcessName
+
+                # Total CPU time in seconds (NOT CPU %)
+                cpu_time = [math]::Round($_.CPU,2)
+
+                # RAM in MB
+                ram = [math]::Round($_.WorkingSet64 / 1MB,2)
+
+                pid = $_.Id
+            }
+
+        }
+
 }
-}
+
+# One-time check, before the main loop starts: if this run of the agent is
+# the first one after a patch-triggered reboot, finish verifying and closing
+# out that install job before doing anything else.
+Test-PendingRebootVerification
 
 # =====================================================
 # MAIN LOOP

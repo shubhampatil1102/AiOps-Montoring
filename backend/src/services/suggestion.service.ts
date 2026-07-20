@@ -15,3 +15,20 @@ export async function createSuggestion(
 
   return result.rows[0].id;
 }
+export async function fetchSuggestions() {
+  const result = await query(`
+    SELECT
+      id,
+      device_id,
+      alert_type,
+      reason,
+      suggested_action,
+      script,
+      created_at
+    FROM heal_suggestions
+    ORDER BY created_at DESC
+    LIMIT 20
+  `);
+
+  return result.rows;
+}

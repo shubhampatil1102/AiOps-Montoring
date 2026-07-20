@@ -9,11 +9,19 @@ export const sidebarColors = {
   Card4:"gray",
 
 };
-export const dashboardColors = {
-  primary: "#6B63B5",
-  secondary: "#4B5AF9",
-  success: "#10B981",
-  warning: "#EF4444",
-  accent: "#FF9501",
-  info: "#3B82F6",
+export const statusColors = {
+  healthy: "#22c55e",
+  warning: "#f59e0b",
+  critical: "#ef4444",
+  offline: "#64748b",
+  info: "#2563eb",
 };
+
+/** Maps a 0-100 health/composite score to a status color — the single
+ * source of truth every health ring/badge should use instead of a fixed
+ * or default color, so a critical score never renders as "healthy" blue. */
+export function scoreToColor(score: number): string {
+  if (score >= 80) return statusColors.healthy;
+  if (score >= 50) return statusColors.warning;
+  return statusColors.critical;
+}

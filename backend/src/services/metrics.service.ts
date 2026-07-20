@@ -4,6 +4,8 @@ import { addEvent } from "./event.service";
 import { Logger } from "./logger.service";
 import { getPolicy } from "./policy.service";
 import { createSuggestion } from "./suggestion.service";
+import { recordMetricSamples } from "./metricsAnalytics.service";
+import { insertRebootHistoryRow } from "../repositories/reboot.repository";
 
 export async function checkCpuAnomaly(id: string, cpu: number) {
   const result = await query(
@@ -34,7 +36,12 @@ export async function ingestMetrics(body: any) {
   const { id, cpu, ram, boot_time = null, processes = [] } = body;
   const now = Date.now();
 
-  Logger.info("FULL METRICS BODY:", body);
+  const previous = await query<{ boot_time: string | null; last_seen: string | null }>(
+    "SELECT boot_time, last_seen FROM devices WHERE id=$1",
+    [id]
+  );
+  const previousBootTime = previous.rows[0]?.boot_time ? Number(previous.rows[0].boot_time) : null;
+  const previousLastSeen = previous.rows[0]?.last_seen ? Number(previous.rows[0].last_seen) : null;
 
   await query(
     `INSERT INTO devices (id,cpu,ram,time,last_seen,state,boot_time)
@@ -49,6 +56,23 @@ export async function ingestMetrics(body: any) {
        boot_time=$5`,
     [id, cpu, ram, now, boot_time]
   );
+
+  // A changed boot_time on an already-known device is a real detected
+  // reboot — reuses this existing ingestion path instead of adding new
+  // agent-side reboot reporting.
+  if (boot_time && previousBootTime && boot_time !== previousBootTime) {
+    try {
+      await insertRebootHistoryRow({
+        deviceId: id,
+        previousBootTime,
+        newBootTime: boot_time,
+        uptimeBeforeRebootMs: previousLastSeen ? previousLastSeen - previousBootTime : null,
+        detectedAt: now,
+      });
+    } catch (err) {
+      Logger.info("REBOOT HISTORY INSERT ERROR:", err);
+    }
+  }
 
   if (body.compliance) {
     try {
@@ -94,8 +118,10 @@ export async function ingestMetrics(body: any) {
      failed_updates,
      driver_status,
      outdated_drivers,
+     registry_reboot_pending,
+     device_class,
      last_checked)
-    VALUES($1,$2,$3,$4,$5,$6,$7)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
     ON CONFLICT(device_id)
     DO UPDATE SET
       windows_update_status=$2,
@@ -103,7 +129,9 @@ export async function ingestMetrics(body: any) {
       failed_updates=$4,
       driver_status=$5,
       outdated_drivers=$6,
-      last_checked=$7
+      registry_reboot_pending=$7,
+      device_class=$8,
+      last_checked=$9
   `,
       [
         id,
@@ -112,6 +140,8 @@ export async function ingestMetrics(body: any) {
         u.failed_updates,
         u.driver_status,
         u.outdated_drivers,
+        u.registry_reboot_pending ?? false,
+        u.device_class ?? null,
         Date.now()
       ]);
   }
@@ -215,6 +245,12 @@ export async function ingestMetrics(body: any) {
     [id, cpu, ram, now]
   );
 
+  try {
+    await recordMetricSamples(id, body, now);
+  } catch (err) {
+    Logger.info("METRIC SAMPLES INSERT ERROR:", err);
+  }
+
   for (const p of processes) {
     await query(
       "INSERT INTO processes (device_id,name,cpu,ram,time) VALUES ($1,$2,$3,$4,$5)",
@@ -282,4 +318,21 @@ export async function attemptAutoHeal(id: string, alertType: string) {
     "UPDATE alerts SET auto_healed=true WHERE id=$1 AND resolved=false",
     [id]
   );
+}
+export async function getMetricsHistory(minutes = 30) {
+  const result = await query(
+  `
+  SELECT
+    FLOOR(time / 5000) * 5000 AS time,
+    ROUND(AVG(cpu)::numeric, 2) AS cpu,
+    ROUND(AVG(ram)::numeric, 2) AS ram
+  FROM metrics_history
+  WHERE time > $1
+  GROUP BY FLOOR(time / 5000)
+  ORDER BY time ASC
+  `,
+  [Date.now() - minutes * 60 * 1000]
+);
+
+  return result.rows;
 }
