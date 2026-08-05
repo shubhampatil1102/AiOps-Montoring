@@ -14,6 +14,10 @@ export const routeModuleMap: { path: string; module: string }[] = [
   { path: "/auto-heal", module: "autoHeal" },
   { path: "/remediations", module: "autoHeal" },
   { path: "/settings", module: "settings" },
+  // Reuses "inventory" — installed-software discovery is squarely what
+  // that module already means, and CLAUDE.md's Permissions list doesn't
+  // ask for a dedicated one.
+  { path: "/software", module: "inventory" },
 ];
 
 /** Exact match first, then longest-prefix match (for dynamic routes like

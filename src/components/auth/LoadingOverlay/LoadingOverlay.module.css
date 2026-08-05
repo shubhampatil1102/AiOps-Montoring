@@ -1,0 +1,43 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  border-radius: inherit;
+  background: rgba(15, 13, 38, 0.82);
+  backdrop-filter: blur(10px);
+  text-align: center;
+}
+
+.stageText {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.progressTrack {
+  width: 200px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6b63b5, #4b5af9);
+}
+
+.overlay[data-theme="light"] {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.overlay[data-theme="light"] .stageText {
+  color: #0f172a;
+}

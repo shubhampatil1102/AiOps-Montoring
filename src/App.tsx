@@ -12,6 +12,8 @@ import Policies from "./pages/Policies";
 import Scripts from "@/pages/Scripts";
 import AutoHeal from "./pages/AutoHeal";
 import Remediation from "./pages/Remediation";
+import Software from "./pages/Software";
+import SoftwareDetail from "./pages/SoftwareDetail";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
@@ -65,6 +67,8 @@ export default function App() {
             <Route path="scripts" element={<Scripts />} />
             <Route path="auto-heal" element={<AutoHeal />} />
             <Route path="remediations" element={<Remediation />} />
+            <Route path="software" element={<Software />} />
+            <Route path="software/:applicationId" element={<SoftwareDetail />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Profile />} />
             <Route path="*" element={<NotFoundPage />} />

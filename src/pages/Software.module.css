@@ -1,0 +1,339 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.controlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  padding: 4px;
+  flex-wrap: wrap;
+}
+
+.tab,
+.tabActive {
+  border: none;
+  background: transparent;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.tabActive {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.select {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.filterRow {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.search {
+  flex: 1;
+  min-width: 220px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+}
+
+.gridToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.gridToolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  flex-wrap: wrap;
+}
+
+.columnMenu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+
+.columnMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.savedFilterAction {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 4px 2px;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.savedFilterAction:hover {
+  color: #4b5af9;
+}
+
+.savedFilterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.savedFilterDelete {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.savedFilterDelete:hover {
+  color: #ef4444;
+}
+
+.appList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.appRowHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.appRowHeader:hover {
+  background: #f8fafc;
+}
+
+.appRowIdentity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.appName {
+  font-weight: 700;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.appPublisher {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.appRowMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.appCategory {
+  font-size: 12px;
+  color: #94a3b8;
+  min-width: 90px;
+  text-align: right;
+}
+
+.hint {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.processTableWrap {
+  overflow-x: auto;
+}
+
+.processTable {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+}
+
+.processTable th,
+.processTable td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  font-size: 13px;
+}
+
+.processTable th {
+  color: #64748b;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.cloudGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.cloudCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cloudCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cloudCardName {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #0f172a;
+}
+
+.incidentList {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12.5px;
+  color: #334155;
+}
+
+.statusLink {
+  font-size: 12px;
+  color: #4b5af9;
+  text-decoration: none;
+}
+
+.statusLink:hover {
+  text-decoration: underline;
+}
+
+.insightsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.rankedRow,
+.rankedRowStatic {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.rankedRow {
+  cursor: pointer;
+}
+
+.rankedRow:hover {
+  color: #4b5af9;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tabs {
+    background: #1e293b;
+  }
+
+  .tabActive {
+    background: #0f172a;
+    color: #f1f5f9;
+  }
+
+  .select,
+  .search {
+    background: #111827;
+    border-color: #334155;
+    color: #f1f5f9;
+  }
+
+  .appRowHeader {
+    background: #111827;
+    border-color: #334155;
+  }
+
+  .appRowHeader:hover {
+    background: #1e293b;
+  }
+
+  .appName {
+    color: #f1f5f9;
+  }
+
+  .cloudCardName {
+    color: #f1f5f9;
+  }
+
+  .columnMenu {
+    background: #111827;
+    border-color: #334155;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+  }
+
+  .columnMenuItem,
+  .savedFilterAction {
+    color: #cbd5e1;
+  }
+}

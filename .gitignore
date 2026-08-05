@@ -1,1 +1,4 @@
 node_modules
+
+# Host-specific agent config — see agent.config.example.json for the template
+agent.config.json

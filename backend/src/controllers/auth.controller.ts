@@ -3,7 +3,13 @@ import * as authService from "../services/auth.service";
 import { accessTokenMaxAgeMs } from "../services/token.service";
 
 const REFRESH_COOKIE_NAME = "refreshToken";
-const REFRESH_COOKIE_PATH = "/auth";
+// "/" rather than "/auth" — the Docker deployment fronts the backend
+// through nginx's /api prefix (VITE_API_URL=/api), so the browser's actual
+// request path is /api/auth/refresh. A cookie scoped to "/auth" never
+// matches that path, so the browser never sends it back and every reload
+// looks like an expired session. "/" matches regardless of any reverse-
+// proxy prefix, in this deployment or any future one.
+const REFRESH_COOKIE_PATH = "/";
 const isProduction = process.env.NODE_ENV === "production";
 
 function setRefreshCookie(res: Response, token: string, expiresAt: number) {

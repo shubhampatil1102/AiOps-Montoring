@@ -62,6 +62,8 @@ import DeviceExecutiveSummary from "@/components/deviceHub/DeviceExecutiveSummar
 import DeviceHealthOverview from "@/components/deviceHub/DeviceHealthOverview";
 import BatteryDetails from "@/components/deviceHub/BatteryDetails";
 import RebootIntelligenceCard from "@/components/deviceHub/RebootIntelligenceCard";
+import UserPrivilegeCard from "@/components/deviceHub/UserPrivilegeCard";
+import { useDeviceUserPrivilege } from "@/hooks/useUserPrivilege";
 import { getSeverity } from "@/utils/severity";
 import type {
   Device,
@@ -222,6 +224,7 @@ export default function DeviceDetail() {
 
   const { data: patchJobs = [] } = useDevicePatchJobs(id);
   const { data: patchHistory = [] } = useDevicePatchHistory(id);
+  const { data: userPrivilegeSummary } = useDeviceUserPrivilege(id);
   const latestPatchJob = patchJobs[0];
   const isPatchJobActive = Boolean(
     latestPatchJob && !PATCH_TERMINAL_STATUSES.has(latestPatchJob.status)
@@ -533,6 +536,8 @@ export default function DeviceDetail() {
         isRestartPending={createReboot.isPending || createAdHocReboot.isPending}
         onSmartRestart={() => setIsRebootConfirmOpen(true)}
       />
+
+      <UserPrivilegeCard summary={userPrivilegeSummary} />
 
       <div className={styles.topRow}>
         <div className={styles.overview}>

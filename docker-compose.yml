@@ -36,6 +36,12 @@ services:
       DB_USER: aiops
       DB_PASSWORD: admin
       DB_NAME: aiops
+      # The frontend container reaches the backend same-origin via nginx's
+      # /api proxy (nginx.conf), so CORS isn't hit on that path. This only
+      # matters if something (a browser, a tool) talks to port 4000 directly
+      # — kept configurable rather than wide open.
+      CORS_ORIGIN: http://192.168.1.36:3000
+      CORS_ALLOW_LAN: "true"
 
 
   frontend:

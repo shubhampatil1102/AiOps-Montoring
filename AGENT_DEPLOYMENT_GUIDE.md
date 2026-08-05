@@ -105,7 +105,7 @@ Register-ScheduledTask `
 
 ### For Remote Server (External)
 ```powershell
-.\agent.ps1 -BackendUrl "http://192.168.1.100:4000"
+.\agent.ps1 -BackendUrl "http://192.168.1.36:4000"
 # or
 .\agent.ps1 -BackendUrl "http://backend.yourdomain.com:4000"
 ```

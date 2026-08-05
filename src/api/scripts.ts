@@ -54,3 +54,17 @@ export async function fetchApprovals(){
   const r = await fetch(`${API_URL}/scripts/approvals`);
   return r.json();
 }
+
+export async function cancelJob(jobId: number) {
+  const r = await fetch(`${API_URL}/scripts/jobs/${jobId}/cancel`, {
+    method: "POST"
+  });
+  return r.json();
+}
+
+export async function deleteJob(jobId: number) {
+  const r = await fetch(`${API_URL}/scripts/jobs/${jobId}`, {
+    method: "DELETE"
+  });
+  return r.json();
+}

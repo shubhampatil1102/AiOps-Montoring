@@ -1,0 +1,330 @@
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: 100%;
+  border-radius: 20px;
+  padding: 1px;
+  display: flex;
+  flex-direction: column;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.card[data-theme="dark"] {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
+  box-shadow: 0 30px 70px rgba(5, 4, 15, 0.5);
+}
+
+.card[data-theme="light"] {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.18);
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* If the card is ever taller than the space available (short windows,
+   larger OS font metrics, etc.), this scrolls internally rather than the
+   whole page scrolling — "no page scroll" stays true either way. */
+.content {
+  position: relative;
+  z-index: 2;
+  min-height: 0;
+  overflow-y: auto;
+  border-radius: 19px;
+  padding: 24px 26px;
+  backdrop-filter: blur(22px);
+  display: flex;
+  flex-direction: column;
+}
+
+.card[data-theme="dark"] .content {
+  background: rgba(17, 16, 38, 0.72);
+}
+
+.card[data-theme="light"] .content {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.title {
+  margin: 0 0 3px;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.card[data-theme="dark"] .title {
+  color: #ffffff;
+}
+
+.card[data-theme="light"] .title {
+  color: #0f172a;
+}
+
+.subtitle {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.card[data-theme="dark"] .subtitle {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.card[data-theme="light"] .subtitle {
+  color: #64748b;
+}
+
+.formError {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.card[data-theme="light"] .formError {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.card[data-theme="dark"] .field label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.card[data-theme="light"] .field label {
+  color: #334155;
+}
+
+.field input {
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-size: 13.5px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.card[data-theme="dark"] .field input {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+}
+
+.card[data-theme="light"] .field input {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.field input:focus-visible {
+  outline: none;
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25);
+}
+
+.inputError {
+  border-color: #ef4444 !important;
+}
+
+.fieldError {
+  font-size: 11.5px;
+  color: #f87171;
+  font-weight: 600;
+}
+
+.passwordRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordRow input {
+  flex: 1;
+  padding-right: 38px;
+}
+
+.togglePassword {
+  position: absolute;
+  right: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.toggleIcon {
+  display: inline-flex;
+}
+
+.card[data-theme="dark"] .togglePassword {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.card[data-theme="light"] .togglePassword {
+  color: #64748b;
+}
+
+.togglePassword:hover {
+  color: #818cf8;
+}
+
+.togglePassword:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 1px;
+}
+
+.optionsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rememberMe {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.card[data-theme="dark"] .rememberMe {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.card[data-theme="light"] .rememberMe {
+  color: #334155;
+}
+
+/* Custom-styled checkbox (appearance: none) rather than relying on native
+   OS rendering — the native control looked visually disconnected from the
+   rest of the glass UI (thick square border, no rounding). */
+.checkboxInput {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border-radius: 5px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.card[data-theme="light"] .checkboxInput {
+  border-color: #cbd5e1;
+  background: #ffffff;
+}
+
+/* Matches the theme-scoped selectors' specificity (0,3,0) so source order
+   — this rule comes after the unchecked one above — is what decides the
+   winner, not an accidental specificity mismatch. */
+.card[data-theme="dark"] .checkboxInput:checked,
+.card[data-theme="light"] .checkboxInput:checked {
+  background: #818cf8;
+  border-color: #818cf8;
+  transform: scale(1.05);
+}
+
+.checkboxInput:checked::after {
+  content: "";
+  position: absolute;
+  left: 4.5px;
+  top: 1.5px;
+  width: 4px;
+  height: 7px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkboxInput:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+}
+
+.forgotLink {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: #a5b4fc;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.card[data-theme="light"] .forgotLink {
+  color: #4b5af9;
+}
+
+.forgotLink:hover {
+  text-decoration: underline;
+}
+
+.forgotLink:focus-visible {
+  outline: 2px solid #818cf8;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.submitWrapper button {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13.5px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.submitWrapper button:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 10px 26px rgba(75, 90, 249, 0.35);
+  filter: brightness(1.05);
+}
+
+.submitWrapper button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.submitWrapper {
+  margin-top: 2px;
+  margin-bottom: 14px;
+}

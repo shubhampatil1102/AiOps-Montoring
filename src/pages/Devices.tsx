@@ -81,10 +81,10 @@ export default function Devices() {
 
   return (
     <div className={styles.page}>
-      <PageHeader
+      {/* <PageHeader
         title="Devices"
         description="Monitor managed devices, hardware health, compliance, and remediation signals."
-      />
+      /> */}
 
       <DashboardWidget
         title="Managed Devices"

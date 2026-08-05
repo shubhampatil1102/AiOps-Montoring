@@ -36,6 +36,30 @@ export async function getScriptJobs(_: Request, res: Response) {
   res.send(jobs);
 }
 
+export async function postScriptCancel(req: Request, res: Response) {
+  const result = await scriptService.cancelScriptJob(Number(req.params.id));
+
+  if (result.status === "NOT_FOUND") {
+    return res.status(404).send({ error: "Script job not found" });
+  }
+
+  if (result.status === "CONFLICT") {
+    return res.status(409).send({ error: "Only pending or running jobs can be cancelled" });
+  }
+
+  res.send({ ok: true });
+}
+
+export async function deleteScriptJobHandler(req: Request, res: Response) {
+  const result = await scriptService.deleteScriptJob(Number(req.params.id));
+
+  if (result.status === "NOT_FOUND") {
+    return res.status(404).send({ error: "Script job not found" });
+  }
+
+  res.send({ ok: true });
+}
+
 export async function getScriptApprovals(_: Request, res: Response) {
   const approvals = await scriptService.getScriptApprovals();
   res.send(approvals);

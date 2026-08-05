@@ -59,6 +59,30 @@ export async function findScriptApprovals() {
   `);
 }
 
+export async function findScriptJobById(jobId: number) {
+  return query(
+    "SELECT id,device_id,status FROM script_jobs WHERE id=$1",
+    [jobId]
+  );
+}
+
+export async function cancelScriptJob(jobId: number) {
+  return query(
+    `UPDATE script_jobs
+     SET status='CANCELLED', finished_at=$1
+     WHERE id=$2 AND status IN ('PENDING','RUNNING')
+     RETURNING id`,
+    [Date.now(), jobId]
+  );
+}
+
+export async function deleteScriptJob(jobId: number) {
+  return query(
+    "DELETE FROM script_jobs WHERE id=$1 RETURNING id",
+    [jobId]
+  );
+}
+
 export async function findNextPendingJob(deviceId: string) {
   return query(
     `SELECT id, script, timeout

@@ -1,27 +1,23 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
-import { API_URL } from "@/api/config";
-import GlassCard from "../components/GlassCard";
-import Spinner from "../components/Spinner";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import PageHeader from "../layouts/PageHeader";
+import DashboardWidget from "../components/dashboard/DashboardWidget";
+import Button from "../components/ui/Button";
+import { fetchAlertPolicy, saveAlertPolicy, type AlertPolicy } from "@/api/policies";
+import styles from "./Policies.module.css";
 
 export default function Policies() {
   const queryClient = useQueryClient();
 
-  // fetch policy
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["policies"],
-    queryFn: async () => {
-      const r = await fetch(`${API_URL}/policies`);
-      return r.json();
-    },
+    queryFn: fetchAlertPolicy,
   });
 
-  // local state
   const [cpu, setCpu] = useState(80);
   const [ram, setRam] = useState(85);
   const [offline, setOffline] = useState(20);
 
-  // load values from backend
   useEffect(() => {
     if (data) {
       setCpu(data.cpu_threshold);
@@ -30,81 +26,90 @@ export default function Policies() {
     }
   }, [data]);
 
-  // save mutation
   const mutation = useMutation({
-    mutationFn: async () => {
-      await fetch(`${API_URL}/policies`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cpu_threshold: cpu,
-          ram_threshold: ram,
-          offline_seconds: offline,
-        }),
-      });
-    },
+    mutationFn: (policy: AlertPolicy) => saveAlertPolicy(policy),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["policies"] });
-      alert("Policy updated successfully");
     },
   });
 
-  if (isLoading) return <Spinner label="Loading policy settings..." />;
-
   return (
-    <div style={{ maxWidth: 500 }}>
-      <h1 style={{ fontSize: 30, marginBottom: 20 }}>Alert Policies</h1>
+    <div className={styles.page}>
+      <PageHeader
+        title="Alert Policies"
+        description="Thresholds that trigger device health alerts and offline detection."
+      />
 
-      <Card label="CPU Threshold (%)" >
-        <input style={{border:"none", backgroundColor:"#8efeb7", padding: 8, borderRadius: 10, marginTop: 10}}
-          type="number"
-          value={cpu}
-          onChange={(e) => setCpu(+e.target.value)}
-        />
-      </Card>
+      <DashboardWidget
+        title="Thresholds"
+        subtitle="Applied fleet-wide to every monitored device"
+        isLoading={isLoading}
+        isError={isError}
+        errorMessage="Couldn't load alert policies. Please try again."
+        footer={
+          <div className={styles.actions}>
+            <Button
+              variant="primary"
+              onClick={() => mutation.mutate({ cpu_threshold: cpu, ram_threshold: ram, offline_seconds: offline })}
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending ? "Saving..." : "Save Policy"}
+            </Button>
 
-      <Card label="RAM Threshold (%)">
-        <input style={{border:"none", backgroundColor:"#8efeb7", padding: 8, borderRadius: 10, marginTop: 10}}
-          type="number"
-          value={ram}
-          onChange={(e) => setRam(+e.target.value)}
-        />
-      </Card>
+            {mutation.isSuccess && (
+              <span className={`${styles.status} ${styles.statusSuccess}`} role="status">
+                Policy updated successfully.
+              </span>
+            )}
 
-      <Card label="Offline Timeout (seconds)">
-        <input style={{border:"none", backgroundColor:"#8efeb7", padding: 8, borderRadius: 10, marginTop: 10}}
-          type="number"
-          value={offline}
-          onChange={(e) => setOffline(+e.target.value)}
-        />
-      </Card>
-
-      <button
-        onClick={() => mutation.mutate()}
-        style={{
-          marginTop: 10,
-          marginLeft: 10,
-          padding: "10px 16px",
-          borderRadius: 8,
-          background: "#22c55e",
-          border: "none",
-          cursor: "pointer",
-          fontWeight: 600,
-        }}
+            {mutation.isError && (
+              <span className={`${styles.status} ${styles.statusError}`} role="alert">
+                Couldn't save policy. Please try again.
+              </span>
+            )}
+          </div>
+        }
       >
-        Save Policy
-      </button>
+        <div className={styles.fields}>
+          <div className={styles.field}>
+            <label htmlFor="cpu-threshold">CPU Threshold (%)</label>
+            <span>Alert when a device's CPU usage stays above this for a sustained period.</span>
+            <input
+              id="cpu-threshold"
+              type="number"
+              min={0}
+              max={100}
+              value={cpu}
+              onChange={(e) => setCpu(+e.target.value)}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="ram-threshold">RAM Threshold (%)</label>
+            <span>Alert when a device's memory usage stays above this for a sustained period.</span>
+            <input
+              id="ram-threshold"
+              type="number"
+              min={0}
+              max={100}
+              value={ram}
+              onChange={(e) => setRam(+e.target.value)}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label htmlFor="offline-timeout">Offline Timeout (seconds)</label>
+            <span>Mark a device offline after this many seconds without a heartbeat.</span>
+            <input
+              id="offline-timeout"
+              type="number"
+              min={0}
+              value={offline}
+              onChange={(e) => setOffline(+e.target.value)}
+            />
+          </div>
+        </div>
+      </DashboardWidget>
     </div>
-  );
-}
-
-
-// small reusable card
-function Card({ label, children }: any) {
-  return (
-    <GlassCard style={{ marginBottom: 16 }}>
-      <div style={{ height: 20, fontFamily: "monospace", marginTop: 12 }}>{label}</div>
-      {children}
-    </GlassCard>
   );
 }

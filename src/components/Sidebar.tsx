@@ -99,7 +99,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
 
             {!collapsed && (
               <div style={{
-                padding: "16px 22px 6px",
+                padding: "6px 22px 6px",
                 fontSize: 11,
                 fontWeight: 700,
                 letterSpacing: "0.06em",
@@ -137,7 +137,7 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                   })}
                 >
 
-                  <Icon size={20} />
+                  <Icon size={16} />
 
                   {!collapsed && (
                     <span style={{

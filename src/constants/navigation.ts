@@ -7,6 +7,7 @@ import {
   LockIcon,
   SuperscriptIcon,
   BotIcon,
+  PackageIcon,
 } from "lucide-react";
 
 export const sidebarNavigation = [
@@ -18,4 +19,7 @@ export const sidebarNavigation = [
   { name: "Scripts", icon: SuperscriptIcon, path: "/scripts", group: "Operations" },
   { name: "Auto Heal", icon: Wrench, path: "/auto-heal", group: "Automate" },
   { name: "Remediations", icon: BotIcon, path: "/remediations", group: "Automate" },
+  // Fills the "Software" slot CLAUDE.md's Sidebar Structure already
+  // documents under Management — not previously wired to any page.
+  { name: "Software", icon: PackageIcon, path: "/software", group: "Management" },
 ];

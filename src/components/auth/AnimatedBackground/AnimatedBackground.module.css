@@ -1,0 +1,73 @@
+.background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.baseGradient {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 100% at 15% 10%, rgba(107, 99, 181, 0.55) 0%, transparent 55%),
+    radial-gradient(100% 90% at 85% 90%, rgba(75, 90, 249, 0.45) 0%, transparent 55%),
+    linear-gradient(160deg, #0c0a1f 0%, #14123a 45%, #1c1a4d 100%);
+}
+
+.gridOverlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(80% 70% at 30% 40%, #000 0%, transparent 75%);
+}
+
+.blobOne,
+.blobTwo,
+.blobThree {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(80px);
+  will-change: transform;
+}
+
+.blobOne {
+  top: -10%;
+  left: 5%;
+  width: 42vw;
+  height: 42vw;
+  background: radial-gradient(circle, rgba(107, 99, 181, 0.55) 0%, transparent 70%);
+}
+
+.blobTwo {
+  bottom: -15%;
+  left: 30%;
+  width: 36vw;
+  height: 36vw;
+  background: radial-gradient(circle, rgba(75, 90, 249, 0.5) 0%, transparent 70%);
+}
+
+.blobThree {
+  top: 20%;
+  right: -10%;
+  width: 34vw;
+  height: 34vw;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.4) 0%, transparent 70%);
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(5, 4, 15, 0.55) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blobOne,
+  .blobTwo,
+  .blobThree {
+    filter: blur(90px);
+  }
+}

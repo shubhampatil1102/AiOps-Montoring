@@ -1,267 +1,150 @@
 .page {
+  position: relative;
+  height: 100dvh;
   min-height: 100vh;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.layout {
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  height: 100%;
+}
+
+.panels {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 60% 40%;
+}
+
+.heroPanel {
+  display: flex;
+  flex-direction: column;
   justify-content: center;
-  padding: 24px;
-  background: linear-gradient(135deg, #6b63b5 0%, #4b5af9 100%);
+  /* Column flex: justify-content is the axis that can overflow here. Plain
+     `center` clips symmetrically off both ends when content is taller than
+     the panel, with no scroll able to reach the clipped top — `safe center`
+     falls back to flex-start instead of clipping. Unsupported browsers just
+     keep the first (unprefixed) declaration. */
+  justify-content: safe center;
+  gap: 24px;
+  padding: 0 56px;
+  min-height: 0;
+  overflow: hidden auto;
 }
 
-.card {
-  width: 100%;
-  max-width: 420px;
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 40px 36px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
-}
-
-.brand {
+.mobileBanner {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 10px;
-  margin-bottom: 28px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #0f172a;
+  text-align: center;
 }
 
-.brandMark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #6b63b5, #4b5af9);
+.mobileBrand {
+  font-size: 22px;
+  font-weight: 800;
   color: #ffffff;
-  flex-shrink: 0;
 }
 
-.title {
-  margin: 0 0 6px;
-  font-size: 24px;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.subtitle {
-  margin: 0 0 24px;
-  font-size: 13.5px;
-  color: #64748b;
-  line-height: 1.5;
-}
-
-.formError {
-  background: #fee2e2;
-  color: #991b1b;
-  border-radius: 10px;
-  padding: 10px 14px;
+.mobileTagline {
+  margin: 0;
   font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 18px;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 320px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
-.form {
+.authPanel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.field label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
-}
-
-.field input {
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: #0f172a;
-  background: #ffffff;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.field input:focus-visible {
-  outline: none;
-  border-color: #4b5af9;
-  box-shadow: 0 0 0 3px rgba(75, 90, 249, 0.15);
-}
-
-.inputError {
-  border-color: #ef4444 !important;
-}
-
-.fieldError {
-  font-size: 12px;
-  color: #dc2626;
-  font-weight: 600;
-}
-
-.passwordRow {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.passwordRow input {
-  flex: 1;
-  padding-right: 40px;
-}
-
-.togglePassword {
-  position: absolute;
-  right: 6px;
-  display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  border-radius: 8px;
+  justify-content: safe center;
+  gap: 12px;
+  padding: 16px 32px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-.togglePassword:hover {
-  background: #f1f5f9;
-  color: #0f172a;
-}
-
-.togglePassword:focus-visible {
-  outline: 2px solid #4b5af9;
-  outline-offset: 1px;
-}
-
-.optionsRow {
+.footer {
+  width: 100%;
+  max-width: 440px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-}
-
-.rememberMe {
-  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: #334155;
-  font-weight: 500;
-  cursor: pointer;
 }
 
-.rememberMe input {
-  width: 15px;
-  height: 15px;
-  accent-color: #4b5af9;
-  cursor: pointer;
+.footerLinks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
 }
 
-.forgotLink {
-  border: none;
-  background: none;
-  padding: 0;
-  font: inherit;
-  color: #4b5af9;
+.footerLinks a {
+  font-size: 12px;
   font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
   text-decoration: none;
-  cursor: pointer;
 }
 
-.forgotLink:hover {
+.footerLinks a:hover {
+  color: #ffffff;
   text-decoration: underline;
 }
 
-.forgotLink:focus-visible {
-  outline: 2px solid #4b5af9;
+.footerLinks a:focus-visible {
+  outline: 2px solid #ffffff;
   outline-offset: 2px;
   border-radius: 2px;
 }
 
-.submitWrapper button {
-  width: 100%;
-  padding: 12px 18px;
-  font-size: 14.5px;
+.footerMeta {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
 }
 
-.submitWrapper button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
+/* No light-theme text overrides here: the aurora background stays the
+   same rich dark gradient in both themes by design (see
+   AnimatedBackground) — only the login card's own glass surface switches
+   between light/dark. Hero/header/footer text must stay light-on-dark
+   regardless of the selected theme, or it becomes unreadable. */
 
-.footNote {
-  margin: 28px 0 0;
-  text-align: center;
-  font-size: 11.5px;
-  color: #94a3b8;
-}
+/* Tablet: 55/45 split per brief */
+@media (max-width: 1080px) {
+  .panels {
+    grid-template-columns: 55% 45%;
+  }
 
-@media (max-width: 480px) {
-  .card {
-    padding: 32px 22px;
+  .heroPanel {
+    padding: 0 36px;
   }
 }
 
-@media (prefers-color-scheme: dark) {
+/* Mobile: hero hidden in favor of a simplified banner, auth card full width */
+@media (max-width: 768px) {
   .page {
-    background: linear-gradient(135deg, #2c2856 0%, #1c1f4a 100%);
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
   }
 
-  .card {
-    background: #111827;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  .panels {
+    grid-template-columns: 1fr;
   }
 
-  .brand,
-  .title {
-    color: #f1f5f9;
+  .heroPanel {
+    padding: 28px 24px 24px;
   }
 
-  .subtitle {
-    color: #94a3b8;
-  }
-
-  .field label {
-    color: #cbd5e1;
-  }
-
-  .field input {
-    background: #1e293b;
-    border-color: #334155;
-    color: #f1f5f9;
-  }
-
-  .field input:focus-visible {
-    border-color: #818cf8;
-    box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25);
-  }
-
-  .togglePassword {
-    color: #94a3b8;
-  }
-
-  .togglePassword:hover {
-    background: #1e293b;
-    color: #f1f5f9;
-  }
-
-  .rememberMe {
-    color: #cbd5e1;
-  }
-
-  .forgotLink {
-    color: #a5b4fc;
-  }
-
-  .footNote {
-    color: #64748b;
+  .authPanel {
+    padding: 20px 20px 32px;
   }
 }

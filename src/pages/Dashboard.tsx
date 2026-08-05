@@ -9,6 +9,7 @@ import IntelligenceCard from "../components/dashboard/widgets/IntelligenceCard";
 import FleetBatteryWidget from "../components/dashboard/widgets/FleetBatteryWidget";
 import PatchComplianceWidget from "../components/dashboard/widgets/PatchComplianceWidget";
 import RebootHealthWidget from "../components/dashboard/widgets/RebootHealthWidget";
+import SoftwareIntelligenceWidget from "../components/dashboard/widgets/SoftwareIntelligenceWidget";
 import QuickActionsBar from "../components/dashboard/widgets/QuickActionsBar";
 import TopAlertingDevicesWidget from "../components/dashboard/widgets/TopAlertingDevicesWidget";
 import AIInsightsWidget from "../components/dashboard/widgets/AIInsightWidget";
@@ -242,6 +243,7 @@ export default function Dashboard() {
         <FleetBatteryWidget hardware={hardware} averageScore={battery.score} />
         <PatchComplianceWidget />
         <RebootHealthWidget />
+        <SoftwareIntelligenceWidget />
       </div>
 
       <div className={styles.activitySection}>

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { runScript, fetchJobs, fetchLibrary, runLibrary, fetchApprovals } from "@/api/scripts";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { runScript, fetchJobs, fetchLibrary, runLibrary, fetchApprovals, cancelJob, deleteJob } from "@/api/scripts";
 import { fetchDevices } from "@/api/devices";
 import GlassCard from "../components/GlassCard";
+import { usePermissions } from "@/hooks/usePermissions";
 
 type ScriptLibrary = {
     id: number;
@@ -13,7 +14,7 @@ type ScriptLibrary = {
 type Job = {
     id: number;
     device_id: string;
-    status: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED";
+    status: "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "CANCELLED";
     output?: string;
     error?: string;
     created_at: number;
@@ -27,6 +28,10 @@ export default function Scripts() {
     const [script, setScript] = useState("");
     const [device, setDevice] = useState("");
     const [activeJob, setActiveJob] = useState<number | null>(null);
+
+    const queryClient = useQueryClient();
+    const { can } = usePermissions();
+    const canExecute = can("devices", "execute");
 
     /* ---------------- DATA ---------------- */
 
@@ -80,6 +85,16 @@ export default function Scripts() {
             runLibrary(device, script_id)
     });
 
+    const cancel = useMutation({
+        mutationFn: (jobId: number) => cancelJob(jobId),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["jobs"] })
+    });
+
+    const remove = useMutation({
+        mutationFn: (jobId: number) => deleteJob(jobId),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["jobs"] })
+    });
+
     const { data: approvals = [] } = useQuery({
         queryKey: ["approvals"],
         queryFn: fetchApprovals,
@@ -122,7 +137,8 @@ export default function Scripts() {
             SUCCESS: "#22c55e",
             FAILED: "#ef4444",
             RUNNING: "#f59e0b",
-            PENDING: "#64748b"
+            PENDING: "#64748b",
+            CANCELLED: "#94a3b8"
         }
 
         return {
@@ -248,7 +264,7 @@ export default function Scripts() {
                         }}>
 
 
-                            <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                 <b>{j.device_id}</b>
                                 <div style={{ fontSize: 12, opacity: .7 }}>
                                     Running for {duration(j.started_at || j.created_at, Date.now())}
@@ -275,6 +291,34 @@ export default function Scripts() {
                                 }} />
                             </div>
 
+                            {canExecute && (
+                                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                                    <button
+                                        style={{ ...smallBtn, borderColor: "#f59e0b", color: "#b45309" }}
+                                        disabled={cancel.isPending}
+                                        onClick={() => {
+                                            if (confirm(`Stop stuck job #${j.id} on ${j.device_id}?`)) {
+                                                cancel.mutate(j.id);
+                                            }
+                                        }}
+                                    >
+                                        Stop
+                                    </button>
+
+                                    <button
+                                        style={{ ...smallBtn, borderColor: "#ef4444", color: "#b91c1c" }}
+                                        disabled={remove.isPending}
+                                        onClick={() => {
+                                            if (confirm(`Delete job #${j.id} from the database? This cannot be undone.`)) {
+                                                remove.mutate(j.id);
+                                            }
+                                        }}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            )}
+
                         </div>
                     ))}
             </div>
@@ -286,7 +330,7 @@ export default function Scripts() {
                 <div style={{ maxHeight: 450, overflowY: "auto" }}>
 
                     {jobs
-                        .filter((j: any) => j.status === "SUCCESS" || j.status === "FAILED")
+                        .filter((j: any) => j.status === "SUCCESS" || j.status === "FAILED" || j.status === "CANCELLED")
                         .sort((a: any, b: any) => b.id - a.id)
                         .map((j: Job) => (
                             <div key={j.id} className="panel" style={{
@@ -338,6 +382,22 @@ export default function Scripts() {
                                     }}>
                                         {j.error}
                                     </pre>
+                                )}
+
+                                {canExecute && (
+                                    <div style={{ display: "flex", marginTop: 10 }}>
+                                        <button
+                                            style={{ ...smallBtn, borderColor: "#ef4444", color: "#b91c1c" }}
+                                            disabled={remove.isPending}
+                                            onClick={() => {
+                                                if (confirm(`Delete job #${j.id} from the database? This cannot be undone.`)) {
+                                                    remove.mutate(j.id);
+                                                }
+                                            }}
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
                                 )}
 
                             </div>
@@ -441,5 +501,15 @@ const btn = {
     color: "white",
     border: "none",
     borderRadius: 8,
+    cursor: "pointer"
+};
+
+const smallBtn: React.CSSProperties = {
+    padding: "6px 12px",
+    background: "transparent",
+    border: "1px solid #cbd5e1",
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: 600,
     cursor: "pointer"
 };

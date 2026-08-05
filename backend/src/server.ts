@@ -13,6 +13,9 @@ registerRoutes(app);
 app.use(errorMiddleware);
 initializeRuntime();
 
-app.listen(SERVER_PORT, () =>
-  Logger.info(`Collector running on http://localhost:${SERVER_PORT}`)
-);
+// Binding 0.0.0.0 (not just localhost/127.0.0.1) is what makes this
+// reachable from other machines on the LAN — required for the agent to
+// connect from a different Windows machine than the one running the backend.
+app.listen(SERVER_PORT, "0.0.0.0", () => {
+  Logger.info(`Collector listening on 0.0.0.0:${SERVER_PORT} (reachable at http://localhost:${SERVER_PORT} locally, or http://<this-machine's-LAN-IP>:${SERVER_PORT} from other devices)`);
+});

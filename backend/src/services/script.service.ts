@@ -45,6 +45,30 @@ export async function getScriptJobs() {
   return result.rows;
 }
 
+export async function cancelScriptJob(jobId: number) {
+  const existing = await scriptRepository.findScriptJobById(jobId);
+  const job = existing.rows[0];
+
+  if (!job) return { status: "NOT_FOUND" as const };
+  if (job.status !== "PENDING" && job.status !== "RUNNING") {
+    return { status: "CONFLICT" as const };
+  }
+
+  const result = await scriptRepository.cancelScriptJob(jobId);
+  if (result.rowCount === 0) return { status: "CONFLICT" as const };
+
+  Logger.info("JOB CANCELLED:", jobId);
+  return { status: "OK" as const };
+}
+
+export async function deleteScriptJob(jobId: number) {
+  const result = await scriptRepository.deleteScriptJob(jobId);
+  if (result.rowCount === 0) return { status: "NOT_FOUND" as const };
+
+  Logger.info("JOB DELETED:", jobId);
+  return { status: "OK" as const };
+}
+
 export async function getScriptApprovals() {
   const result = await scriptRepository.findScriptApprovals();
   return result.rows;

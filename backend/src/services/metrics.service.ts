@@ -6,6 +6,10 @@ import { getPolicy } from "./policy.service";
 import { createSuggestion } from "./suggestion.service";
 import { recordMetricSamples } from "./metricsAnalytics.service";
 import { insertRebootHistoryRow } from "../repositories/reboot.repository";
+import { ingestApplicationData } from "./applicationDiscovery.service";
+import { ingestDependencyData } from "./applicationDependency.service";
+import { ingestWindowsUpdateData } from "./windowsUpdateInventory.service";
+import { ingestUserPrivilegeData } from "./userPrivilege.service";
 
 export async function checkCpuAnomaly(id: string, cpu: number) {
   const result = await query(
@@ -120,8 +124,18 @@ export async function ingestMetrics(body: any) {
      outdated_drivers,
      registry_reboot_pending,
      device_class,
+     update_source,
+     wu_service_status,
+     bits_service_status,
+     update_medic_status,
+     last_scan_at,
+     last_successful_scan_at,
+     last_failed_scan_at,
+     last_install_at,
+     scan_duration_ms,
+     reboot_reason,
      last_checked)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
     ON CONFLICT(device_id)
     DO UPDATE SET
       windows_update_status=$2,
@@ -131,7 +145,17 @@ export async function ingestMetrics(body: any) {
       outdated_drivers=$6,
       registry_reboot_pending=$7,
       device_class=$8,
-      last_checked=$9
+      update_source=$9,
+      wu_service_status=$10,
+      bits_service_status=$11,
+      update_medic_status=$12,
+      last_scan_at=$13,
+      last_successful_scan_at=$14,
+      last_failed_scan_at=$15,
+      last_install_at=$16,
+      scan_duration_ms=$17,
+      reboot_reason=$18,
+      last_checked=$19
   `,
       [
         id,
@@ -142,8 +166,34 @@ export async function ingestMetrics(body: any) {
         u.outdated_drivers,
         u.registry_reboot_pending ?? false,
         u.device_class ?? null,
+        u.update_source ?? null,
+        u.wu_service_status ?? null,
+        u.bits_service_status ?? null,
+        u.update_medic_status ?? null,
+        u.last_scan_at ?? null,
+        u.last_successful_scan_at ?? null,
+        u.last_failed_scan_at ?? null,
+        u.last_install_at ?? null,
+        u.scan_duration_ms ?? null,
+        u.reboot_reason ?? null,
         Date.now()
       ]);
+  }
+
+  if (body.update_catalog || body.update_history_entries || body.update_events) {
+    try {
+      await ingestWindowsUpdateData(id, body);
+    } catch (err) {
+      Logger.info("WINDOWS UPDATE INVENTORY INGEST ERROR:", err);
+    }
+  }
+
+  if (body.user_sessions || body.local_administrators || body.uac_status) {
+    try {
+      await ingestUserPrivilegeData(id, body);
+    } catch (err) {
+      Logger.info("USER PRIVILEGE INGEST ERROR:", err);
+    }
   }
 
   if (body.inventory) {
@@ -169,6 +219,25 @@ export async function ingestMetrics(body: any) {
       );
     } catch (err) {
       Logger.info("INVENTORY SAVE ERROR:", err);
+    }
+  }
+
+  if (body.installed_applications || body.running_processes || body.application_services) {
+    try {
+      await ingestApplicationData(id, body);
+    } catch (err) {
+      Logger.info("APPLICATION DATA INGEST ERROR:", err);
+    }
+  }
+
+  if (
+    body.scheduled_tasks || body.startup_items || body.system_drivers ||
+    body.authentication_status || body.network_connections || body.dns_cache
+  ) {
+    try {
+      await ingestDependencyData(id, body);
+    } catch (err) {
+      Logger.info("DEPENDENCY DATA INGEST ERROR:", err);
     }
   }
 
